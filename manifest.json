@@ -1,13 +1,13 @@
 {
-  "name": "세계 수도 날씨 지도",
-  "short_name": "수도날씨",
-  "description": "서울 대비 세계 수도의 오전 6시·오후 8시 기온을 지도로 보여줘요",
+  "name": "세계 날씨 지도",
+  "short_name": "세계날씨",
+  "description": "서울 대비 세계 수도와 도시의 기온을 날짜·시간별로 지도에 보여줘요",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#cfe3f0",
+  "background_color": "#e3eff8",
   "theme_color": "#1f5fa0",
   "icons": [
     {
@@ -27,13 +27,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "한국 100만 도시",
-      "short_name": "한국",
-      "url": "korea.html"
     }
   ]
 }

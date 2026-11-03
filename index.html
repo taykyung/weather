@@ -4,15 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1f5fa0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="세계날씨">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="수도날씨">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-
-<title>세계 수도 기온 지도</title>
+<title>세계 날씨 지도</title>
 <style>
 :root{--bg:#fff;--ink:#1f2328;--muted:#5f6b76;--grid:#c9d0d6;--surface:#fff;--accent:#2f7fd8;color-scheme:light}
 @media (prefers-color-scheme:dark){:root{--bg:#14191e;--ink:#e7ecf0;--muted:#97a4af;--grid:#3a454f;--surface:#1b232a;--accent:#5aa9f0;color-scheme:dark}}
@@ -21,7 +19,21 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","No
 main{max-width:1200px;margin:0 auto}
 h1{font-size:1.25rem;margin:0 0 4px}
 .status{font-size:.85rem;color:var(--muted);margin:0 0 12px}
-.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tools{display:flex;flex-wrap:nowrap;gap:6px;align-items:center;margin-bottom:8px;overflow-x:auto}
+.tools2{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.tools2 .tt{font-size:.9rem;font-weight:600;white-space:nowrap}
+.tools .lab{display:flex;align-items:center;gap:4px;min-width:0;flex:1 1 0}
+.tools .lab.date{flex:2 1 0}
+.tools .lab input,.tools .lab select{flex:1 1 auto;min-width:0;width:100%}
+.tools button,.tools select,.tools input[type=date]{font-size:.85rem;padding:6px 8px}
+.tools button{flex:0 0 auto;white-space:nowrap}
+.tools .lt{white-space:nowrap}
+@media (max-width:520px){
+  body{padding:10px}
+  .tools{gap:4px}
+  .tools .lt{display:none}
+  .tools button,.tools select,.tools input[type=date]{font-size:.78rem;padding:5px 5px}
+}
 select,button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--grid);border-radius:4px;padding:8px 12px;cursor:pointer}
 button:hover,select:hover{border-color:var(--accent)}
 select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
@@ -39,28 +51,131 @@ select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outlin
 .info{min-height:1.4em;font-size:.88rem;margin-top:8px}
 .err{color:#b3261e;font-size:.85rem;margin-top:6px}
 .note{font-size:.78rem;color:var(--muted);margin-top:8px}
-body{padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(16px,env(safe-area-inset-bottom))}
+.tools2 select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--grid);border-radius:4px;padding:6px 10px}
+.search{position:relative;flex:1 1 200px;max-width:280px}
+.search input{width:100%;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--grid);border-radius:4px;padding:8px 12px}
+.search input:focus-visible,.results li:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.results{position:absolute;left:0;right:0;top:calc(100% + 2px);background:var(--surface);border:1px solid var(--grid);border-radius:4px;list-style:none;margin:0;padding:2px;z-index:20;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.results li{padding:8px 10px;cursor:pointer}
+.results li:hover,.results li:focus{background:var(--bg)}
+.results small{color:var(--muted)}
+.results .none{cursor:default;color:var(--muted)}
+.dotc{width:16px;height:16px;border-radius:50%;display:inline-block}
+.lab{display:inline-flex;align-items:center;gap:6px;font-size:.9rem}
+input[type=date]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--grid);border-radius:4px;padding:7px 10px}
+input[type=date]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+#detail{position:fixed;inset:0;z-index:100;background:var(--bg);overflow:auto}
+#detail[hidden]{display:none}
+.dwrap{max-width:900px;margin:0 auto;padding:12px 16px 32px}
+.dbar{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--grid);padding:10px 0;margin-top:12px}
+.dmode{display:flex;align-items:center;gap:0;margin:6px 0 4px}
+.dmode .dmlab{font-size:.9rem;font-weight:600;margin-right:8px}
+.dmode button{border-radius:0;padding:6px 12px;font-size:.9rem}
+.dmode button:first-of-type{border-radius:4px 0 0 4px}
+#dm-abs{border-radius:0 4px 4px 0;margin-left:-1px}
+#dclose{border-radius:4px !important;margin-left:12px;white-space:nowrap}
+.dmode button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+.dmode button:disabled{opacity:.45;cursor:default}
+.dmodeinfo{font-size:.82rem;color:var(--muted);margin:0 0 8px;min-height:1.2em}
+#detail h2{font-size:1.2rem;margin:4px 0 2px}
+.dsub{font-size:.85rem;color:var(--muted);margin:0 0 10px}
+.dmsg{font-size:.9rem;color:var(--muted);min-height:1.2em;margin:6px 0}
+#dchart svg{display:block;width:100%;height:auto}
+#dchart svg text{fill:var(--ink);font-family:inherit}
+
+/* ---------- 꾸미기 ---------- */
+:root{--page:#eaf0f5;--card:#ffffff;--line:#d5dee7;--sea1:#e3eff8;--sea2:#c9dfee;--accent:#1f6fd1;--accent-ink:#fff;--shadow:0 1px 2px rgba(20,40,70,.06),0 8px 24px rgba(20,40,70,.08);--r:14px}
+@media (prefers-color-scheme:dark){:root{--page:#0b1118;--card:#151e28;--line:#27333f;--sea1:#13232f;--sea2:#0d1a24;--accent:#4f9ae6;--accent-ink:#0b1118;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35)}}
+body{background:var(--page);padding:20px 16px 40px;-webkit-font-smoothing:antialiased}
+main{max-width:1100px}
+h1{font-size:1.7rem;font-weight:800;letter-spacing:-.03em;margin:4px 2px 2px}
+.status{margin:0 2px 14px;font-size:.84rem}
+.tools{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px;gap:6px;margin-bottom:8px;box-shadow:var(--shadow)}
+.tools2{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px;margin-bottom:10px;box-shadow:var(--shadow)}
+.tools2 .tt{color:var(--muted);font-weight:600}
+.tools2{padding:5px 10px}
+.tools2 select{flex:0 0 auto;min-width:150px;padding:6px 10px}
+@media (prefers-color-scheme:dark){#map svg line{stroke-opacity:.1}}
+select,button,input[type=date]{border-radius:10px;border-color:var(--line);background:var(--card);transition:border-color .15s,background .15s,box-shadow .15s}
+select,input[type=date]{padding:7px 10px}
+button{font-weight:600}
+button:hover,select:hover{border-color:var(--accent)}
+button:active{transform:translateY(1px)}
+#nowbtn{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tools .lab{background:transparent}
+.legend{gap:8px;margin:2px 0 10px}
+.legend span{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 11px 4px 7px;font-size:.78rem}
+.legend span[style*="color"]{background:transparent;border-color:transparent}
+.dotc{width:14px;height:14px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+#map{height:68vh;min-height:360px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,var(--sea1),var(--sea2));box-shadow:var(--shadow)}
+.zoom{right:14px;top:14px;gap:8px}
+.zoom button{width:40px;height:40px;border-radius:50%;background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow);font-size:1.3rem}
+.info{margin:10px 2px 0;color:var(--muted)}
+details.note{margin:12px 2px 0;font-size:.8rem;color:var(--muted)}
+details.note summary{cursor:pointer;font-weight:600;color:var(--ink);padding:4px 0}
+details.note p{margin:6px 0 0;line-height:1.6}
+#detail{background:var(--page)}
+.dwrap{padding:18px 16px 40px}
+#detail h2{font-size:1.5rem;font-weight:800;letter-spacing:-.03em}
+.dmode{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 8px;box-shadow:var(--shadow);width:max-content;max-width:100%;flex-wrap:wrap;gap:4px 0}
+#dchart{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px;box-shadow:var(--shadow)}
+.dmode button[aria-pressed="true"]{color:var(--accent-ink)}
+
+.dcmp{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px;position:relative}
+.dcname{font-size:.85rem;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.dcname i{display:inline-block;width:12px;height:12px;border-radius:3px;background:linear-gradient(90deg,#f0a35e 50%,#8fb7e8 50%)}
+.dcpanel{position:relative;display:flex;gap:6px;flex:1 1 100%;max-width:420px}
+.dcpanel[hidden]{display:none}
+.dcpanel input{flex:1 1 auto;min-width:0;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
+.dcpanel .results{z-index:30}
+
+.drow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 4px}
+.drow .dmode{margin:0}
+#dcbtn,#dclose{white-space:nowrap;padding:8px 14px;border-radius:12px}
+#dcbtn[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
+#dclose{margin-left:0 !important;border-radius:12px !important}
+.dcmp{margin:0 0 8px}
+#dchart{padding:14px 10px 6px}
+#dchart svg text.ax{fill:var(--muted)}
+#dchart svg text.dn{font-weight:700}
+.dwrap .legend span{font-size:.76rem}
+
+@media (max-width:520px){
+  .drow{gap:6px;flex-wrap:nowrap}
+  #dcbtn,#dclose{padding:7px 9px;font-size:.82rem;border-radius:10px !important}
+  .drow .dmode{padding:4px 5px;flex:0 1 auto}
+  .drow .dmode .dmlab{display:none}
+  .dmode button{padding:6px 8px;font-size:.82rem}
+  .legend span{font-size:.72rem;padding:3px 9px 3px 6px}
+}
 </style>
 </head>
 <body>
 <main>
-  <h1>세계 수도 기온 지도</h1>
+  <h1>세계 날씨 지도</h1>
   <p class="status" id="status" aria-live="polite"></p>
   <div class="tools">
-    <select id="focus" aria-label="보는 지역">
-      <option value="ALL">전 세계</option><option value="A">아시아</option><option value="E">유럽</option>
-      <option value="F">아프리카</option><option value="N">북·중미</option><option value="S">남미</option><option value="O">오세아니아</option>
-    </select>
-    <button id="show" type="button">시간: 오전+오후</button>
-    <button id="mode" type="button">표시: 서울 대비</button>
+    <label class="lab date"><span class="lt">날짜</span><input type="date" id="date" aria-label="날짜 선택"></label>
+    <label class="lab hour"><span class="lt">시간</span><select id="hour" aria-label="시간 선택"></select></label>
+    <button id="mode" type="button" aria-label="표시 방식 전환">서울 대비</button>
     <button id="unit" type="button" aria-label="온도 단위 전환">°C</button>
-    <button id="refresh" type="button">새로고침</button>
+    <button id="nowbtn" type="button">현재</button>
+  </div>
+  <div class="tools2">
+    <label class="tt" for="cont">대륙</label>
+    <select id="cont" aria-label="대륙 선택">
+      <option value="ALL">전체</option><option value="A">아시아</option><option value="E">유럽</option>
+      <option value="F">아프리카</option><option value="N">북중미</option><option value="S">남미</option><option value="O">오세아니아</option>
+    </select>
   </div>
   <div class="legend" aria-label="범례">
-    <span><i class="sw dry"></i>비 안 옴</span>
-    <span><i class="sw rain"></i>비 옴</span>
-    <span><i class="sw gray"></i>왼쪽: 오전 6시</span>
-    <span><i class="sw gray h"></i>오른쪽(빗금): 오후 8시</span>
+    <span><i class="dotc" style="background:rgb(27,79,156)"></i>서울보다 추움</span>
+    <span><i class="dotc" style="background:#e6e6e6"></i>서울과 비슷</span>
+    <span><i class="dotc" style="background:rgb(198,40,40)"></i>서울보다 더움</span>
+    <span><i class="dotc" style="background:repeating-linear-gradient(135deg,rgba(0,0,0,.55) 0 2px,#e6e6e6 2px 5px)"></i>비 옴 (빗금)</span>
+    <span><i class="dotc" style="background:#f2f2f2"></i>데이터 없음</span>
+    <span><i class="dotc" style="background:#333"></i>서울 (기준)</span>
+    <span style="color:var(--muted)">색이 진할수록 서울과 차이가 커요</span>
   </div>
   <div id="wrap">
     <div id="map" role="application" aria-label="세계 지도"></div>
@@ -69,215 +184,578 @@ body{padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(16px,env(
       <button id="zout" type="button" aria-label="축소">−</button>
     </div>
   </div>
-  <div class="info" id="info" aria-live="polite">수도 표시를 누르면 실제 기온과 강수량이 여기에 나와요. 마우스 휠이나 두 손가락으로 확대하고, 끌어서 움직일 수 있어요.</div>
+  <div class="info" id="info" aria-live="polite">도시 원을 누르면 일주일 기온 화면이 열리고(원 위의 글씨는 도시 이름, 지도에 회색 글씨는 국가 이름), 선택한 시각의 기온과 강수량은 여기에 나와요. 유럽처럼 이름이 겹치면 확대해서 보세요. 마우스 휠이나 두 손가락으로 확대하고, 끌어서 움직일 수 있어요.</div>
   <div class="err" id="err"></div>
-  <p class="note">표시된 숫자는 서울의 같은 시각(오전 6시, 오후 8시) 기온을 0으로 둔 차이예요. 시각은 각 수도의 현지 시각 기준이고, 그 시각에 강수량이 있으면 파란색, 없으면 노란색이에요. 서울은 기준이라 실제 기온을 보여줘요. 대상은 UN 회원국 수도(서울 제외)와 바티칸이고, 값은 1시간 단위 예보예요. 육지 윤곽은 인터넷에서 받아 그려요. 받지 못하면 격자만 보이고 수도 위치는 그대로 정확해요.</p>
+  <details class="note"><summary>안내 보기</summary><p>위에서 날짜와 시간을 고르면 그 시각의 기온을 보여줘요. 표시된 숫자는 서울의 같은 날짜·시간 기온을 0으로 둔 차이예요. 시각은 각 도시의 현지 시각 기준이라서, 6시를 고르면 모든 도시가 현지 시계로 6시예요. 지도의 원은 서울보다 더우면 붉은색, 추우면 파란색이고 차이가 클수록 진해요(15° 이상이면 가장 진해요). 그 시각에 강수량이 있으면 원에 빗금이 들어가요. 날짜는 오늘 기준 90일 전부터 14일 후까지 고를 수 있어요. 지난 날짜는 관측값이 아니라 기상 모델 값이고, 앞으로의 날짜는 예보라서 멀수록 달라질 수 있어요. 대륙을 고르면 지도가 그 대륙으로 확대되고, 그 대륙의 수도와 함께 인구 100만 명 이상 도시(제가 아는 대략적인 목록이라 일부는 빠지거나 다를 수 있어요)의 기온도 보여요. 전체 화면에서는 수도만 보여요. 대상은 각 나라의 수도 193곳이에요(UN 회원국 수도와 바티칸). 서울은 비교 기준이라 따로 표시해요. 지도를 확대하면 원이 함께 커지고 축소하면 작아져요. 값은 1시간 단위예요. 육지 윤곽과 국가 경계선은 인터넷에서 받아 그려요(경계선은 단순화된 지도라 실제와 조금 다를 수 있어요). 받지 못하면 격자만 보이고 도시 위치는 정확해요.</p></details>
 </main>
+
+<div id="detail" role="dialog" aria-modal="true" aria-labelledby="dtitle" hidden>
+  <div class="dwrap">
+    <h2 id="dtitle"></h2>
+    <p class="dsub" id="dsub"></p>
+    <div class="drow">
+      <button id="dcbtn" type="button" aria-expanded="false" aria-controls="dcpanel">⇄ 도시</button>
+      <div class="dmode" role="group" aria-label="비교 기준">
+        <span class="dmlab">비교</span>
+        <button id="dm-diff" type="button" aria-pressed="true">서울 대비</button>
+        <button id="dm-abs" type="button" aria-pressed="false">현재 기온</button>
+      </div>
+      <button id="dclose" type="button">← 지도</button>
+    </div>
+    <p class="dmodeinfo" id="dmodeinfo"></p>
+    <div class="dcmp">
+      <span id="dcname" class="dcname" hidden></span>
+      <button id="dcclear" type="button" hidden aria-label="비교 도시 해제">✕ 해제</button>
+      <div id="dcpanel" class="dcpanel" hidden>
+        <input id="dcq" list="dcl" type="search" placeholder="도시 (예: 파리, Sydney)" autocomplete="off" aria-label="비교할 도시">
+        <datalist id="dcl"></datalist>
+        <button id="dcgo" type="button">비교</button>
+        <ul class="results" id="dcres" hidden></ul>
+      </div>
+    </div>
+    <div class="legend" aria-label="범례">
+      <span><i class="sw" style="background:#d9534f"></i>하루 최고 기온</span>
+      <span><i class="sw" style="background:#3b6fb6"></i>하루 최저 기온</span>
+      <span><i class="sw" style="background:repeating-linear-gradient(135deg,rgba(255,255,255,.95) 0 2px,#8a8a8a 2px 5px)"></i>빗금: 비 오는 날</span>
+    </div>
+    <div class="dmsg" id="dmsg" aria-live="polite"></div>
+    <button id="dretry" type="button" hidden>다시 시도</button>
+    <div id="dchart"></div>
+    <p class="note">선택한 날짜부터 7일간의 하루 최고·최저 기온이에요(현지 날짜 기준). "서울 대비"는 서울의 같은 날 최고·최저 기온을 0으로 둔 차이이고, "현재 기온"은 그날의 실제 기온이에요. 날짜는 지도 화면에서 바꿀 수 있어요. 비 오는 날은 하루 강수량이 0.1mm 이상인 날이고, 막대 아래에 강수량을 적었어요. 지난 날짜는 관측값이 아니라 기상 모델 값이고, 앞으로의 날짜는 예보라서 멀수록 달라질 수 있어요.</p>
+  </div>
+</div>
 
 <script>
 const SEOUL = { i:-1, name:"서울", country:"대한민국", cont:"A", lat:37.57, lon:126.98 };
-// 수도|나라|대륙(A아시아 E유럽 F아프리카 N북중미 S남미 O오세아니아)|위도|경도
-const RAW = `카불|아프가니스탄|A|34.53|69.17
-예레반|아르메니아|A|40.18|44.51
-바쿠|아제르바이잔|A|40.41|49.87
-마나마|바레인|A|26.23|50.59
-다카|방글라데시|A|23.81|90.41
-팀푸|부탄|A|27.47|89.64
-반다르스리브가완|브루나이|A|4.89|114.94
-프놈펜|캄보디아|A|11.56|104.92
-베이징|중국|A|39.90|116.41
-트빌리시|조지아|A|41.72|44.79
-뉴델리|인도|A|28.61|77.21
-자카르타|인도네시아|A|-6.21|106.85
-테헤란|이란|A|35.69|51.39
-바그다드|이라크|A|33.31|44.37
-예루살렘|이스라엘|A|31.77|35.21
-도쿄|일본|A|35.68|139.69
-암만|요르단|A|31.95|35.93
-아스타나|카자흐스탄|A|51.17|71.43
-쿠웨이트시티|쿠웨이트|A|29.38|47.99
-비슈케크|키르기스스탄|A|42.87|74.59
-비엔티안|라오스|A|17.97|102.63
-베이루트|레바논|A|33.89|35.50
-쿠알라룸푸르|말레이시아|A|3.14|101.69
-말레|몰디브|A|4.18|73.51
-울란바토르|몽골|A|47.89|106.91
-네피도|미얀마|A|19.76|96.08
-카트만두|네팔|A|27.72|85.32
-평양|북한|A|39.02|125.75
-무스카트|오만|A|23.59|58.41
-이슬라마바드|파키스탄|A|33.69|73.05
-마닐라|필리핀|A|14.60|120.98
-도하|카타르|A|25.29|51.53
-리야드|사우디아라비아|A|24.71|46.68
-싱가포르|싱가포르|A|1.35|103.82
-콜롬보|스리랑카|A|6.93|79.86
-다마스쿠스|시리아|A|33.51|36.29
-두샨베|타지키스탄|A|38.56|68.77
-방콕|태국|A|13.76|100.50
-딜리|동티모르|A|-8.56|125.57
-앙카라|튀르키예|A|39.93|32.86
-아슈하바트|투르크메니스탄|A|37.96|58.33
-아부다비|아랍에미리트|A|24.45|54.38
-타슈켄트|우즈베키스탄|A|41.30|69.24
-하노이|베트남|A|21.03|105.85
-사나|예멘|A|15.37|44.19
-티라나|알바니아|E|41.33|19.82
-안도라라베야|안도라|E|42.51|1.52
-빈|오스트리아|E|48.21|16.37
-민스크|벨라루스|E|53.90|27.57
-브뤼셀|벨기에|E|50.85|4.35
-사라예보|보스니아 헤르체고비나|E|43.86|18.41
-소피아|불가리아|E|42.70|23.32
-자그레브|크로아티아|E|45.81|15.98
-니코시아|키프로스|E|35.19|33.38
-프라하|체코|E|50.08|14.44
-코펜하겐|덴마크|E|55.68|12.57
-탈린|에스토니아|E|59.44|24.75
-헬싱키|핀란드|E|60.17|24.94
-파리|프랑스|E|48.86|2.35
-베를린|독일|E|52.52|13.40
-아테네|그리스|E|37.98|23.73
-부다페스트|헝가리|E|47.50|19.04
-레이캬비크|아이슬란드|E|64.15|-21.94
-더블린|아일랜드|E|53.35|-6.26
-로마|이탈리아|E|41.90|12.50
-리가|라트비아|E|56.95|24.11
-파두츠|리히텐슈타인|E|47.14|9.52
-빌뉴스|리투아니아|E|54.69|25.28
-룩셈부르크|룩셈부르크|E|49.61|6.13
-발레타|몰타|E|35.90|14.51
-키시너우|몰도바|E|47.01|28.86
-모나코|모나코|E|43.74|7.42
-포드고리차|몬테네그로|E|42.44|19.26
-암스테르담|네덜란드|E|52.37|4.90
-스코페|북마케도니아|E|42.00|21.43
-오슬로|노르웨이|E|59.91|10.75
-바르샤바|폴란드|E|52.23|21.01
-리스본|포르투갈|E|38.72|-9.14
-부쿠레슈티|루마니아|E|44.43|26.10
-모스크바|러시아|E|55.76|37.62
-산마리노|산마리노|E|43.94|12.45
-베오그라드|세르비아|E|44.79|20.45
-브라티슬라바|슬로바키아|E|48.15|17.11
-류블랴나|슬로베니아|E|46.06|14.51
-마드리드|스페인|E|40.42|-3.70
-스톡홀름|스웨덴|E|59.33|18.07
-베른|스위스|E|46.95|7.45
-키이우|우크라이나|E|50.45|30.52
-런던|영국|E|51.51|-0.13
-바티칸|바티칸|E|41.90|12.45
-알제|알제리|F|36.75|3.06
-루안다|앙골라|F|-8.84|13.23
-포르토노보|베냉|F|6.50|2.63
-가보로네|보츠와나|F|-24.65|25.91
-와가두구|부르키나파소|F|12.37|-1.52
-기테가|부룬디|F|-3.43|29.92
-프라이아|카보베르데|F|14.93|-23.51
-야운데|카메룬|F|3.87|11.52
-방기|중앙아프리카공화국|F|4.36|18.56
-은자메나|차드|F|12.13|15.05
-모로니|코모로|F|-11.70|43.26
-브라자빌|콩고공화국|F|-4.27|15.28
-킨샤사|콩고민주공화국|F|-4.44|15.27
-야무수크로|코트디부아르|F|6.83|-5.29
-지부티|지부티|F|11.59|43.15
-카이로|이집트|F|30.04|31.24
-말라보|적도기니|F|3.75|8.78
-아스마라|에리트레아|F|15.32|38.93
-음바바네|에스와티니|F|-26.31|31.14
-아디스아바바|에티오피아|F|9.03|38.74
-리브르빌|가봉|F|0.42|9.47
-반줄|감비아|F|13.45|-16.58
-아크라|가나|F|5.60|-0.19
-코나크리|기니|F|9.64|-13.58
-비사우|기니비사우|F|11.86|-15.60
-나이로비|케냐|F|-1.29|36.82
-마세루|레소토|F|-29.31|27.48
-몬로비아|라이베리아|F|6.30|-10.80
-트리폴리|리비아|F|32.89|13.19
-안타나나리보|마다가스카르|F|-18.88|47.51
-릴롱궤|말라위|F|-13.96|33.77
-바마코|말리|F|12.64|-8.00
-누악쇼트|모리타니|F|18.09|-15.98
-포트루이스|모리셔스|F|-20.16|57.50
-라바트|모로코|F|34.02|-6.83
-마푸투|모잠비크|F|-25.97|32.57
-빈트후크|나미비아|F|-22.56|17.08
-니아메|니제르|F|13.51|2.11
-아부자|나이지리아|F|9.08|7.40
-키갈리|르완다|F|-1.95|30.06
-상투메|상투메 프린시페|F|0.34|6.73
-다카르|세네갈|F|14.72|-17.47
-빅토리아|세이셸|F|-4.62|55.45
-프리타운|시에라리온|F|8.48|-13.23
-모가디슈|소말리아|F|2.05|45.32
-프리토리아|남아프리카공화국|F|-25.75|28.19
-주바|남수단|F|4.85|31.58
-하르툼|수단|F|15.50|32.56
-도도마|탄자니아|F|-6.16|35.75
-로메|토고|F|6.13|1.22
-튀니스|튀니지|F|36.81|10.18
-캄팔라|우간다|F|0.35|32.58
-루사카|잠비아|F|-15.39|28.32
-하라레|짐바브웨|F|-17.83|31.05
-세인트존스|앤티가 바부다|N|17.12|-61.85
-나소|바하마|N|25.05|-77.35
-브리지타운|바베이도스|N|13.10|-59.61
-벨모판|벨리즈|N|17.25|-88.77
-오타와|캐나다|N|45.42|-75.70
-산호세|코스타리카|N|9.93|-84.08
-아바나|쿠바|N|23.11|-82.37
-로조|도미니카|N|15.30|-61.39
-산토도밍고|도미니카공화국|N|18.49|-69.93
-산살바도르|엘살바도르|N|13.69|-89.19
-세인트조지스|그레나다|N|12.06|-61.75
-과테말라시티|과테말라|N|14.63|-90.51
-포르토프랭스|아이티|N|18.54|-72.34
-테구시갈파|온두라스|N|14.07|-87.19
-킹스턴|자메이카|N|17.97|-76.79
-멕시코시티|멕시코|N|19.43|-99.13
-마나과|니카라과|N|12.11|-86.24
-파나마시티|파나마|N|8.98|-79.52
-바스테르|세인트키츠 네비스|N|17.30|-62.72
-캐스트리스|세인트루시아|N|14.01|-60.99
-킹스타운|세인트빈센트 그레나딘|N|13.16|-61.22
-포트오브스페인|트리니다드 토바고|N|10.66|-61.51
-워싱턴 D.C.|미국|N|38.91|-77.04
-부에노스아이레스|아르헨티나|S|-34.60|-58.38
-라파스|볼리비아|S|-16.50|-68.15
-브라질리아|브라질|S|-15.79|-47.88
-산티아고|칠레|S|-33.45|-70.67
-보고타|콜롬비아|S|4.71|-74.07
-키토|에콰도르|S|-0.18|-78.47
-조지타운|가이아나|S|6.80|-58.16
-아순시온|파라과이|S|-25.26|-57.58
-리마|페루|S|-12.05|-77.04
-파라마리보|수리남|S|5.85|-55.20
-몬테비데오|우루과이|S|-34.90|-56.16
-카라카스|베네수엘라|S|10.48|-66.90
-캔버라|호주|O|-35.28|149.13
-수바|피지|O|-18.14|178.44
-타라와|키리바시|O|1.45|173.03
-마주로|마셜 제도|O|7.09|171.38
-팔리키르|미크로네시아|O|6.92|158.16
-야렌|나우루|O|-0.55|166.92
-웰링턴|뉴질랜드|O|-41.29|174.78
-응게룰무드|팔라우|O|7.50|134.62
-포트모르즈비|파푸아뉴기니|O|-9.44|147.18
-아피아|사모아|O|-13.83|-171.76
-호니아라|솔로몬 제도|O|-9.43|159.95
-누쿠알로파|통가|O|-21.14|-175.20
-푸나푸티|투발루|O|-8.52|179.19
-포트빌라|바누아투|O|-17.73|168.32`;
-const CAPS = RAW.split("\n").map((l, i) => { const p = l.split("|"); return { i, name:p[0], country:p[1], cont:p[2], lat:+p[3], lon:+p[4] }; });
+// 수도|나라|대륙(A아시아 E유럽 F아프리카 N북중미 S남미 O오세아니아)|위도|경도|인구 순위|인구(명) — 인구 500만 명 이상 도시, Natural Earth POP_MAX 추정(2026-06 기준 자료), 서울은 비교 기준이라 제외
+const RAW = `카불|아프가니스탄|A|34.53|69.17|0|0
+예레반|아르메니아|A|40.18|44.51|0|0
+바쿠|아제르바이잔|A|40.41|49.87|0|0
+마나마|바레인|A|26.23|50.59|0|0
+다카|방글라데시|A|23.81|90.41|0|0
+팀푸|부탄|A|27.47|89.64|0|0
+반다르스리브가완|브루나이|A|4.89|114.94|0|0
+프놈펜|캄보디아|A|11.56|104.92|0|0
+베이징|중국|A|39.90|116.41|0|0
+트빌리시|조지아|A|41.72|44.79|0|0
+뉴델리|인도|A|28.61|77.21|0|0
+자카르타|인도네시아|A|-6.21|106.85|0|0
+테헤란|이란|A|35.69|51.39|0|0
+바그다드|이라크|A|33.31|44.37|0|0
+예루살렘|이스라엘|A|31.77|35.21|0|0
+도쿄|일본|A|35.68|139.69|0|0
+암만|요르단|A|31.95|35.93|0|0
+아스타나|카자흐스탄|A|51.17|71.43|0|0
+쿠웨이트시티|쿠웨이트|A|29.38|47.99|0|0
+비슈케크|키르기스스탄|A|42.87|74.59|0|0
+비엔티안|라오스|A|17.97|102.63|0|0
+베이루트|레바논|A|33.89|35.50|0|0
+쿠알라룸푸르|말레이시아|A|3.14|101.69|0|0
+말레|몰디브|A|4.18|73.51|0|0
+울란바토르|몽골|A|47.89|106.91|0|0
+네피도|미얀마|A|19.76|96.08|0|0
+카트만두|네팔|A|27.72|85.32|0|0
+평양|북한|A|39.02|125.75|0|0
+무스카트|오만|A|23.59|58.41|0|0
+이슬라마바드|파키스탄|A|33.69|73.05|0|0
+마닐라|필리핀|A|14.60|120.98|0|0
+도하|카타르|A|25.29|51.53|0|0
+리야드|사우디아라비아|A|24.71|46.68|0|0
+싱가포르|싱가포르|A|1.35|103.82|0|0
+콜롬보|스리랑카|A|6.93|79.86|0|0
+다마스쿠스|시리아|A|33.51|36.29|0|0
+두샨베|타지키스탄|A|38.56|68.77|0|0
+방콕|태국|A|13.76|100.50|0|0
+딜리|동티모르|A|-8.56|125.57|0|0
+앙카라|튀르키예|A|39.93|32.86|0|0
+아슈하바트|투르크메니스탄|A|37.96|58.33|0|0
+아부다비|아랍에미리트|A|24.45|54.38|0|0
+타슈켄트|우즈베키스탄|A|41.30|69.24|0|0
+하노이|베트남|A|21.03|105.85|0|0
+사나|예멘|A|15.37|44.19|0|0
+티라나|알바니아|E|41.33|19.82|0|0
+안도라라베야|안도라|E|42.51|1.52|0|0
+빈|오스트리아|E|48.21|16.37|0|0
+민스크|벨라루스|E|53.90|27.57|0|0
+브뤼셀|벨기에|E|50.85|4.35|0|0
+사라예보|보스니아 헤르체고비나|E|43.86|18.41|0|0
+소피아|불가리아|E|42.70|23.32|0|0
+자그레브|크로아티아|E|45.81|15.98|0|0
+니코시아|키프로스|E|35.19|33.38|0|0
+프라하|체코|E|50.08|14.44|0|0
+코펜하겐|덴마크|E|55.68|12.57|0|0
+탈린|에스토니아|E|59.44|24.75|0|0
+헬싱키|핀란드|E|60.17|24.94|0|0
+파리|프랑스|E|48.86|2.35|0|0
+베를린|독일|E|52.52|13.40|0|0
+아테네|그리스|E|37.98|23.73|0|0
+부다페스트|헝가리|E|47.50|19.04|0|0
+레이캬비크|아이슬란드|E|64.15|-21.94|0|0
+더블린|아일랜드|E|53.35|-6.26|0|0
+로마|이탈리아|E|41.90|12.50|0|0
+리가|라트비아|E|56.95|24.11|0|0
+파두츠|리히텐슈타인|E|47.14|9.52|0|0
+빌뉴스|리투아니아|E|54.69|25.28|0|0
+룩셈부르크|룩셈부르크|E|49.61|6.13|0|0
+발레타|몰타|E|35.90|14.51|0|0
+키시너우|몰도바|E|47.01|28.86|0|0
+모나코|모나코|E|43.74|7.42|0|0
+포드고리차|몬테네그로|E|42.44|19.26|0|0
+암스테르담|네덜란드|E|52.37|4.90|0|0
+스코페|북마케도니아|E|42.00|21.43|0|0
+오슬로|노르웨이|E|59.91|10.75|0|0
+바르샤바|폴란드|E|52.23|21.01|0|0
+리스본|포르투갈|E|38.72|-9.14|0|0
+부쿠레슈티|루마니아|E|44.43|26.10|0|0
+모스크바|러시아|E|55.76|37.62|0|0
+산마리노|산마리노|E|43.94|12.45|0|0
+베오그라드|세르비아|E|44.79|20.45|0|0
+브라티슬라바|슬로바키아|E|48.15|17.11|0|0
+류블랴나|슬로베니아|E|46.06|14.51|0|0
+마드리드|스페인|E|40.42|-3.70|0|0
+스톡홀름|스웨덴|E|59.33|18.07|0|0
+베른|스위스|E|46.95|7.45|0|0
+키이우|우크라이나|E|50.45|30.52|0|0
+런던|영국|E|51.51|-0.13|0|0
+바티칸|바티칸|E|41.90|12.45|0|0
+알제|알제리|F|36.75|3.06|0|0
+루안다|앙골라|F|-8.84|13.23|0|0
+포르토노보|베냉|F|6.50|2.63|0|0
+가보로네|보츠와나|F|-24.65|25.91|0|0
+와가두구|부르키나파소|F|12.37|-1.52|0|0
+기테가|부룬디|F|-3.43|29.92|0|0
+프라이아|카보베르데|F|14.93|-23.51|0|0
+야운데|카메룬|F|3.87|11.52|0|0
+방기|중앙아프리카공화국|F|4.36|18.56|0|0
+은자메나|차드|F|12.13|15.05|0|0
+모로니|코모로|F|-11.70|43.26|0|0
+브라자빌|콩고공화국|F|-4.27|15.28|0|0
+킨샤사|콩고민주공화국|F|-4.44|15.27|0|0
+야무수크로|코트디부아르|F|6.83|-5.29|0|0
+지부티|지부티|F|11.59|43.15|0|0
+카이로|이집트|F|30.04|31.24|0|0
+말라보|적도기니|F|3.75|8.78|0|0
+아스마라|에리트레아|F|15.32|38.93|0|0
+음바바네|에스와티니|F|-26.31|31.14|0|0
+아디스아바바|에티오피아|F|9.03|38.74|0|0
+리브르빌|가봉|F|0.42|9.47|0|0
+반줄|감비아|F|13.45|-16.58|0|0
+아크라|가나|F|5.60|-0.19|0|0
+코나크리|기니|F|9.64|-13.58|0|0
+비사우|기니비사우|F|11.86|-15.60|0|0
+나이로비|케냐|F|-1.29|36.82|0|0
+마세루|레소토|F|-29.31|27.48|0|0
+몬로비아|라이베리아|F|6.30|-10.80|0|0
+트리폴리|리비아|F|32.89|13.19|0|0
+안타나나리보|마다가스카르|F|-18.88|47.51|0|0
+릴롱궤|말라위|F|-13.96|33.77|0|0
+바마코|말리|F|12.64|-8.00|0|0
+누악쇼트|모리타니|F|18.09|-15.98|0|0
+포트루이스|모리셔스|F|-20.16|57.50|0|0
+라바트|모로코|F|34.02|-6.83|0|0
+마푸투|모잠비크|F|-25.97|32.57|0|0
+빈트후크|나미비아|F|-22.56|17.08|0|0
+니아메|니제르|F|13.51|2.11|0|0
+아부자|나이지리아|F|9.08|7.40|0|0
+키갈리|르완다|F|-1.95|30.06|0|0
+상투메|상투메 프린시페|F|0.34|6.73|0|0
+다카르|세네갈|F|14.72|-17.47|0|0
+빅토리아|세이셸|F|-4.62|55.45|0|0
+프리타운|시에라리온|F|8.48|-13.23|0|0
+모가디슈|소말리아|F|2.05|45.32|0|0
+프리토리아|남아프리카공화국|F|-25.75|28.19|0|0
+주바|남수단|F|4.85|31.58|0|0
+하르툼|수단|F|15.50|32.56|0|0
+도도마|탄자니아|F|-6.16|35.75|0|0
+로메|토고|F|6.13|1.22|0|0
+튀니스|튀니지|F|36.81|10.18|0|0
+캄팔라|우간다|F|0.35|32.58|0|0
+루사카|잠비아|F|-15.39|28.32|0|0
+하라레|짐바브웨|F|-17.83|31.05|0|0
+세인트존스|앤티가 바부다|N|17.12|-61.85|0|0
+나소|바하마|N|25.05|-77.35|0|0
+브리지타운|바베이도스|N|13.10|-59.61|0|0
+벨모판|벨리즈|N|17.25|-88.77|0|0
+오타와|캐나다|N|45.42|-75.70|0|0
+산호세|코스타리카|N|9.93|-84.08|0|0
+아바나|쿠바|N|23.11|-82.37|0|0
+로조|도미니카|N|15.30|-61.39|0|0
+산토도밍고|도미니카공화국|N|18.49|-69.93|0|0
+산살바도르|엘살바도르|N|13.69|-89.19|0|0
+세인트조지스|그레나다|N|12.06|-61.75|0|0
+과테말라시티|과테말라|N|14.63|-90.51|0|0
+포르토프랭스|아이티|N|18.54|-72.34|0|0
+테구시갈파|온두라스|N|14.07|-87.19|0|0
+킹스턴|자메이카|N|17.97|-76.79|0|0
+멕시코시티|멕시코|N|19.43|-99.13|0|0
+마나과|니카라과|N|12.11|-86.24|0|0
+파나마시티|파나마|N|8.98|-79.52|0|0
+바스테르|세인트키츠 네비스|N|17.30|-62.72|0|0
+캐스트리스|세인트루시아|N|14.01|-60.99|0|0
+킹스타운|세인트빈센트 그레나딘|N|13.16|-61.22|0|0
+포트오브스페인|트리니다드 토바고|N|10.66|-61.51|0|0
+워싱턴 D.C.|미국|N|38.91|-77.04|0|0
+부에노스아이레스|아르헨티나|S|-34.60|-58.38|0|0
+라파스|볼리비아|S|-16.50|-68.15|0|0
+브라질리아|브라질|S|-15.79|-47.88|0|0
+산티아고|칠레|S|-33.45|-70.67|0|0
+보고타|콜롬비아|S|4.71|-74.07|0|0
+키토|에콰도르|S|-0.18|-78.47|0|0
+조지타운|가이아나|S|6.80|-58.16|0|0
+아순시온|파라과이|S|-25.26|-57.58|0|0
+리마|페루|S|-12.05|-77.04|0|0
+파라마리보|수리남|S|5.85|-55.20|0|0
+몬테비데오|우루과이|S|-34.90|-56.16|0|0
+카라카스|베네수엘라|S|10.48|-66.90|0|0
+캔버라|호주|O|-35.28|149.13|0|0
+수바|피지|O|-18.14|178.44|0|0
+타라와|키리바시|O|1.45|173.03|0|0
+마주로|마셜 제도|O|7.09|171.38|0|0
+팔리키르|미크로네시아|O|6.92|158.16|0|0
+야렌|나우루|O|-0.55|166.92|0|0
+웰링턴|뉴질랜드|O|-41.29|174.78|0|0
+응게룰무드|팔라우|O|7.50|134.62|0|0
+포트모르즈비|파푸아뉴기니|O|-9.44|147.18|0|0
+아피아|사모아|O|-13.83|-171.76|0|0
+호니아라|솔로몬 제도|O|-9.43|159.95|0|0
+누쿠알로파|통가|O|-21.14|-175.20|0|0
+푸나푸티|투발루|O|-8.52|179.19|0|0
+포트빌라|바누아투|O|-17.73|168.32|0|0`;
+// 국가 이름을 지도 위에 따로 표시할 위치(대략적인 중심: 경도, 위도)
+const CTRY = {"미국":[-98,39.5],"중국":[103,35],"독일":[10.4,51.2],"일본":[138.5,36.5],"영국":[-2.5,54],"인도":[79,22],"프랑스":[2.5,46.5],"이탈리아":[12.5,42.8],
+"러시아":[95,61],"브라질":[-52,-10],"캐나다":[-100,58],"호주":[134,-25],"멕시코":[-102,23.5],"스페인":[-4,40],"튀르키예":[35,39],"인도네시아":[117,-2],
+"네덜란드":[5.5,52.2],"사우디아라비아":[45,24],"스위스":[8.2,46.8],"폴란드":[19.5,52],"아일랜드":[-8,53.2],"벨기에":[4.6,50.6],"스웨덴":[15,62],"이스라엘":[35,31.2],
+"아르헨티나":[-65,-38],"싱가포르":[103.8,1.35],"오스트리아":[14.5,47.5],"아랍에미리트":[54,23.8],"노르웨이":[9,62],"태국":[101,15],"콜롬비아":[-73,4],"베트남":[107.5,15.5],
+"말레이시아":[102,4],"필리핀":[122.5,12],"방글라데시":[90.3,23.8],"덴마크":[9.5,56],"루마니아":[25,45.8],"남아프리카공화국":[24.5,-29],"파키스탄":[69.5,30],"체코":[15.5,49.8],
+"이란":[53,32],"콩고민주공화국":[23.5,-2.5],"대만":[121,23.7],"앙골라":[17.5,-12.5],"이라크":[43.7,33],"이집트":[30,26.5],"칠레":[-70.5,-30],"페루":[-75,-9.5],"포르투갈":[-8,39.5],"나이지리아":[8,9.5],"카자흐스탄":[67,48],"핀란드":[26,64.5]};
+const CTRY_EXTRA = [{ country:"대한민국", lon:127.8, lat:36.2 }];   // 기준인 서울이 속한 나라
+// 인구 100만 명 이상 도시(대륙을 고르면 그 대륙의 도시만 수도와 함께 보여요). 도시|나라|대륙|위도|경도 — 인구는 도시권 기준 대략적인 값이라 100만 안팎인 도시는 빠지거나 들어갈 수 있어요.
+const BIGRAW = `상하이|중국|A|31.23|121.47
+톈진|중국|A|39.34|117.36
+광저우|중국|A|23.13|113.26
+선전|중국|A|22.54|114.06
+우한|중국|A|30.59|114.31
+충칭|중국|A|29.56|106.55
+청두|중국|A|30.57|104.07
+난징|중국|A|32.06|118.8
+시안|중국|A|34.34|108.94
+선양|중국|A|41.8|123.43
+하얼빈|중국|A|45.8|126.53
+항저우|중국|A|30.27|120.15
+다롄|중국|A|38.91|121.61
+칭다오|중국|A|36.07|120.38
+정저우|중국|A|34.75|113.62
+지난|중국|A|36.65|117.0
+창사|중국|A|28.23|112.94
+쿤밍|중국|A|25.04|102.71
+푸저우|중국|A|26.07|119.3
+허페이|중국|A|31.82|117.23
+창춘|중국|A|43.82|125.32
+타이위안|중국|A|37.87|112.55
+난닝|중국|A|22.82|108.32
+우루무치|중국|A|43.83|87.62
+구이양|중국|A|26.65|106.63
+란저우|중국|A|36.06|103.83
+닝보|중국|A|29.87|121.54
+쑤저우|중국|A|31.3|120.59
+우시|중국|A|31.49|120.31
+둥관|중국|A|23.02|113.75
+포산|중국|A|23.02|113.12
+스자좡|중국|A|38.04|114.51
+샤먼|중국|A|24.48|118.09
+난창|중국|A|28.68|115.86
+후허하오터|중국|A|40.84|111.75
+홍콩|홍콩|A|22.32|114.17
+타이베이|대만|A|25.03|121.57
+가오슝|대만|A|22.63|120.3
+타이중|대만|A|24.15|120.67
+뭄바이|인도|A|19.08|72.88
+콜카타|인도|A|22.57|88.36
+첸나이|인도|A|13.08|80.27
+벵갈루루|인도|A|12.97|77.59
+하이데라바드|인도|A|17.39|78.49
+아마다바드|인도|A|23.02|72.57
+푸네|인도|A|18.52|73.86
+수라트|인도|A|21.17|72.83
+자이푸르|인도|A|26.91|75.79
+러크나우|인도|A|26.85|80.95
+칸푸르|인도|A|26.45|80.35
+나그푸르|인도|A|21.15|79.09
+인도르|인도|A|22.72|75.86
+파트나|인도|A|25.59|85.14
+보팔|인도|A|23.26|77.41
+비샤카파트남|인도|A|17.69|83.22
+루디아나|인도|A|30.9|75.86
+아그라|인도|A|27.18|78.02
+바라나시|인도|A|25.32|82.97
+코임바토르|인도|A|11.02|76.96
+코치|인도|A|9.93|76.27
+바도다라|인도|A|22.31|73.18
+마두라이|인도|A|9.92|78.12
+비제야와다|인도|A|16.51|80.65
+카라치|파키스탄|A|24.86|67.01
+라호르|파키스탄|A|31.55|74.34
+파이살라바드|파키스탄|A|31.42|73.08
+물탄|파키스탄|A|30.2|71.47
+하이데라바드(파키스탄)|파키스탄|A|25.4|68.37
+페샤와르|파키스탄|A|34.01|71.52
+치타공|방글라데시|A|22.36|91.78
+이스탄불|튀르키예|A|41.01|28.98
+이즈미르|튀르키예|A|38.42|27.14
+부르사|튀르키예|A|40.18|29.06
+아다나|튀르키예|A|37.0|35.32
+가지안테프|튀르키예|A|37.07|37.38
+코니아|튀르키예|A|37.87|32.49
+마슈하드|이란|A|36.3|59.6
+이스파한|이란|A|32.65|51.67
+카라지|이란|A|35.83|50.99
+시라즈|이란|A|29.59|52.58
+타브리즈|이란|A|38.08|46.29
+모술|이라크|A|36.34|43.13
+바스라|이라크|A|30.51|47.78
+아르빌|이라크|A|36.19|44.01
+제다|사우디아라비아|A|21.54|39.17
+메카|사우디아라비아|A|21.39|39.86
+담맘|사우디아라비아|A|26.43|50.1
+두바이|아랍에미리트|A|25.2|55.27
+호찌민|베트남|A|10.82|106.63
+하이퐁|베트남|A|20.86|106.68
+다낭|베트남|A|16.05|108.2
+양곤|미얀마|A|16.87|96.2
+만달레이|미얀마|A|21.97|96.08
+세부|필리핀|A|10.32|123.89
+다바오|필리핀|A|7.07|125.61
+수라바야|인도네시아|A|-7.25|112.75
+반둥|인도네시아|A|-6.92|107.61
+메단|인도네시아|A|3.59|98.67
+세마랑|인도네시아|A|-6.97|110.42
+팔렘방|인도네시아|A|-2.98|104.76
+마카사르|인도네시아|A|-5.15|119.43
+부산|대한민국|A|35.18|129.08
+인천|대한민국|A|37.46|126.71
+대구|대한민국|A|35.87|128.6
+대전|대한민국|A|36.35|127.38
+광주|대한민국|A|35.16|126.85
+울산|대한민국|A|35.54|129.31
+창원|대한민국|A|35.23|128.68
+함흥|북한|A|39.92|127.54
+남포|북한|A|38.74|125.4
+오사카|일본|A|34.69|135.5
+나고야|일본|A|35.18|136.91
+삿포로|일본|A|43.06|141.35
+후쿠오카|일본|A|33.59|130.4
+고베|일본|A|34.69|135.2
+교토|일본|A|35.01|135.77
+히로시마|일본|A|34.39|132.46
+센다이|일본|A|38.27|140.87
+기타큐슈|일본|A|33.88|130.88
+알마티|카자흐스탄|A|43.24|76.89
+알레포|시리아|A|36.2|37.16
+텔아비브|이스라엘|A|32.09|34.78
+노보시비르스크|러시아|A|55.03|82.92
+예카테린부르크|러시아|A|56.84|60.6
+첼랴빈스크|러시아|A|55.16|61.4
+옴스크|러시아|A|54.99|73.37
+크라스노야르스크|러시아|A|56.01|92.85
+상트페테르부르크|러시아|E|59.93|30.34
+니즈니노브고로드|러시아|E|56.33|44.0
+카잔|러시아|E|55.79|49.12
+사마라|러시아|E|53.2|50.15
+로스토프나도누|러시아|E|47.24|39.72
+우파|러시아|E|54.74|55.97
+페름|러시아|E|58.01|56.23
+볼고그라드|러시아|E|48.71|44.51
+보로네시|러시아|E|51.67|39.18
+크라스노다르|러시아|E|45.04|38.98
+함부르크|독일|E|53.55|9.99
+뮌헨|독일|E|48.14|11.58
+쾰른|독일|E|50.94|6.96
+프랑크푸르트|독일|E|50.11|8.68
+슈투트가르트|독일|E|48.78|9.18
+뒤셀도르프|독일|E|51.23|6.78
+도르트문트|독일|E|51.51|7.47
+에센|독일|E|51.46|7.01
+마르세유|프랑스|E|43.3|5.37
+리옹|프랑스|E|45.76|4.84
+툴루즈|프랑스|E|43.6|1.44
+낭트|프랑스|E|47.22|-1.55
+릴|프랑스|E|50.63|3.06
+보르도|프랑스|E|44.84|-0.58
+밀라노|이탈리아|E|45.46|9.19
+나폴리|이탈리아|E|40.85|14.27
+토리노|이탈리아|E|45.07|7.69
+팔레르모|이탈리아|E|38.12|13.36
+제노바|이탈리아|E|44.41|8.93
+볼로냐|이탈리아|E|44.49|11.34
+바르셀로나|스페인|E|41.39|2.17
+발렌시아|스페인|E|39.47|-0.38
+세비야|스페인|E|37.39|-5.98
+사라고사|스페인|E|41.65|-0.89
+말라가|스페인|E|36.72|-4.42
+빌바오|스페인|E|43.26|-2.93
+버밍엄|영국|E|52.49|-1.89
+맨체스터|영국|E|53.48|-2.24
+글래스고|영국|E|55.86|-4.25
+리버풀|영국|E|53.41|-2.99
+리즈|영국|E|53.8|-1.55
+셰필드|영국|E|53.38|-1.47
+로테르담|네덜란드|E|51.92|4.48
+크라쿠프|폴란드|E|50.06|19.94
+우치|폴란드|E|51.76|19.46
+브로츠와프|폴란드|E|51.11|17.04
+포즈난|폴란드|E|52.41|16.93
+그단스크|폴란드|E|54.35|18.65
+카토비체|폴란드|E|50.26|19.02
+하르키우|우크라이나|E|49.99|36.23
+오데사|우크라이나|E|46.48|30.73
+드니프로|우크라이나|E|48.46|35.05
+도네츠크|우크라이나|E|48.0|37.8
+르비우|우크라이나|E|49.84|24.03
+자포리자|우크라이나|E|47.84|35.14
+포르투|포르투갈|E|41.15|-8.61
+테살로니키|그리스|E|40.64|22.94
+예테보리|스웨덴|E|57.71|11.97
+알렉산드리아|이집트|F|31.2|29.92
+라고스|나이지리아|F|6.52|3.38
+카노|나이지리아|F|12.0|8.52
+이바단|나이지리아|F|7.38|3.95
+포트하커트|나이지리아|F|4.82|7.03
+요하네스버그|남아프리카공화국|F|-26.2|28.05
+케이프타운|남아프리카공화국|F|-33.92|18.42
+더반|남아프리카공화국|F|-29.86|31.02
+아비장|코트디부아르|F|5.36|-4.01
+카사블랑카|모로코|F|33.57|-7.59
+마라케시|모로코|F|31.63|-8.01
+탕헤르|모로코|F|35.77|-5.8
+오랑|알제리|F|35.7|-0.63
+벵가지|리비아|F|32.12|20.07
+다르에스살람|탄자니아|F|-6.79|39.21
+몸바사|탄자니아|F|-4.04|39.67
+쿠마시|가나|F|6.69|-1.62
+루붐바시|콩고민주공화국|F|-11.66|27.48
+음부지마이|콩고민주공화국|F|-6.12|23.6
+키상가니|콩고민주공화국|F|0.52|25.19
+두알라|카메룬|F|4.05|9.7
+뉴욕|미국|N|40.71|-74.01
+로스앤젤레스|미국|N|34.05|-118.24
+시카고|미국|N|41.88|-87.63
+휴스턴|미국|N|29.76|-95.37
+댈러스|미국|N|32.78|-96.8
+필라델피아|미국|N|39.95|-75.17
+마이애미|미국|N|25.76|-80.19
+애틀랜타|미국|N|33.75|-84.39
+보스턴|미국|N|42.36|-71.06
+피닉스|미국|N|33.45|-112.07
+샌프란시스코|미국|N|37.77|-122.42
+디트로이트|미국|N|42.33|-83.05
+시애틀|미국|N|47.61|-122.33
+미니애폴리스|미국|N|44.98|-93.27
+샌디에이고|미국|N|32.72|-117.16
+탬파|미국|N|27.95|-82.46
+덴버|미국|N|39.74|-104.99
+세인트루이스|미국|N|38.63|-90.2
+볼티모어|미국|N|39.29|-76.61
+올랜도|미국|N|28.54|-81.38
+샬럿|미국|N|35.23|-80.84
+포틀랜드|미국|N|45.52|-122.68
+샌안토니오|미국|N|29.42|-98.49
+피츠버그|미국|N|40.44|-80.0
+라스베이거스|미국|N|36.17|-115.14
+새크라멘토|미국|N|38.58|-121.49
+신시내티|미국|N|39.1|-84.51
+캔자스시티|미국|N|39.1|-94.58
+컬럼버스|미국|N|39.96|-83.0
+클리블랜드|미국|N|41.5|-81.69
+인디애나폴리스|미국|N|39.77|-86.16
+오스틴|미국|N|30.27|-97.74
+내슈빌|미국|N|36.16|-86.78
+샌호세|미국|N|37.34|-121.89
+밀워키|미국|N|43.04|-87.91
+잭슨빌|미국|N|30.33|-81.66
+오클라호마시티|미국|N|35.47|-97.52
+멤피스|미국|N|35.15|-90.05
+솔트레이크시티|미국|N|40.76|-111.89
+뉴올리언스|미국|N|29.95|-90.07
+루이빌|미국|N|38.25|-85.76
+리치먼드|미국|N|37.54|-77.43
+버펄로|미국|N|42.89|-78.88
+하트퍼드|미국|N|41.76|-72.67
+프로비던스|미국|N|41.82|-71.41
+롤리|미국|N|35.78|-78.64
+버밍햄|미국|N|33.52|-86.8
+호놀룰루|미국|N|21.31|-157.86
+토론토|캐나다|N|43.65|-79.38
+몬트리올|캐나다|N|45.5|-73.57
+밴쿠버|캐나다|N|49.28|-123.12
+캘거리|캐나다|N|51.05|-114.07
+에드먼턴|캐나다|N|53.55|-113.49
+위니펙|캐나다|N|49.9|-97.14
+과달라하라|멕시코|N|20.66|-103.35
+몬테레이|멕시코|N|25.69|-100.32
+푸에블라|멕시코|N|19.04|-98.21
+티후아나|멕시코|N|32.51|-117.04
+레온|멕시코|N|21.12|-101.68
+시우다드후아레스|멕시코|N|31.69|-106.42
+토레온|멕시코|N|25.54|-103.41
+케레타로|멕시코|N|20.59|-100.39
+메리다|멕시코|N|20.97|-89.62
+산루이스포토시|멕시코|N|22.15|-100.98
+아과스칼리엔테스|멕시코|N|21.88|-102.29
+칸쿤|멕시코|N|21.16|-86.85
+멕시칼리|멕시코|N|32.66|-115.47
+산후안|푸에르토리코|N|18.47|-66.11
+산페드로술라|온두라스|N|15.5|-88.03
+상파울루|브라질|S|-23.55|-46.63
+리우데자네이루|브라질|S|-22.91|-43.17
+벨루오리존치|브라질|S|-19.92|-43.94
+살바도르|브라질|S|-12.97|-38.51
+포르탈레자|브라질|S|-3.72|-38.54
+쿠리치바|브라질|S|-25.43|-49.27
+헤시피|브라질|S|-8.05|-34.88
+포르투알레그리|브라질|S|-30.03|-51.23
+마나우스|브라질|S|-3.12|-60.02
+벨렘|브라질|S|-1.46|-48.5
+고이아니아|브라질|S|-16.68|-49.25
+캄피나스|브라질|S|-22.91|-47.06
+상루이스|브라질|S|-2.53|-44.3
+마세이우|브라질|S|-9.67|-35.74
+나타우|브라질|S|-5.79|-35.21
+비토리아|브라질|S|-20.32|-40.34
+조앙페소아|브라질|S|-7.12|-34.86
+아라카주|브라질|S|-10.91|-37.07
+코르도바|아르헨티나|S|-31.42|-64.18
+로사리오|아르헨티나|S|-32.95|-60.65
+멘도사|아르헨티나|S|-32.89|-68.84
+투쿠만|아르헨티나|S|-26.82|-65.22
+라플라타|아르헨티나|S|-34.92|-57.95
+발파라이소|칠레|S|-33.05|-71.62
+콘셉시온|칠레|S|-36.83|-73.05
+메데인|콜롬비아|S|6.24|-75.58
+칼리|콜롬비아|S|3.45|-76.53
+바랑키야|콜롬비아|S|10.96|-74.78
+카르타헤나|콜롬비아|S|10.39|-75.51
+쿠쿠타|콜롬비아|S|7.89|-72.51
+부카라망가|콜롬비아|S|7.12|-73.12
+마라카이보|베네수엘라|S|10.64|-71.64
+바르키시메토|베네수엘라|S|10.07|-69.32
+과야킬|에콰도르|S|-2.17|-79.92
+산타크루스|볼리비아|S|-17.78|-63.18
+시드니|호주|O|-33.87|151.21
+멜버른|호주|O|-37.81|144.96
+브리즈번|호주|O|-27.47|153.03
+퍼스|호주|O|-31.95|115.86
+애들레이드|호주|O|-34.93|138.6
+오클랜드|뉴질랜드|O|-36.85|174.76`;
+const BIG = BIGRAW.split("\n").map((l, k) => { const p = l.split("|"); return { i:1000 + k, big:true, name:p[0], country:p[1], cont:p[2], lat:+p[3], lon:+p[4] }; });
+const bigNow = () => curCont === "ALL" ? [] : BIG.filter(c => c.cont === curCont);   // 지금 대륙의 100만 이상 도시만 불러와요(호출 수를 아끼려고)
+const CAPS = RAW.split("\n").map((l, i) => { const p = l.split("|"); return { i, name:p[0], country:p[1], cont:p[2], lat:+p[3], lon:+p[4], rank:+p[5], pop:+p[6], cap:p[2].includes("C"), big:p[2].includes("B") }; });
 
 const $ = id => document.getElementById(id);
-function load(k, f){ try{ const v = localStorage.getItem("wmap:"+k); return v ? JSON.parse(v) : f; }catch(e){ return f; } }
+function load(k, f){ try{ const v = localStorage.getItem("gdp50map:"+k); return v ? JSON.parse(v) : f; }catch(e){ return f; } }
 function save(k, v){ try{ localStorage.setItem("wmap:"+k, JSON.stringify(v)); }catch(e){} }
 
-let unit = load("unit", "C"), mode = load("mode", "diff"), show = load("show", "both");
-const AM_H = 6, PM_H = 20, RAIN_MM = 0.1;
+let unit = load("unit", "C"), mode = load("mode", "diff"), names = "on", tmode = "local", extra = null, curCont = "ALL";   // 도시 이름은 항상 표시, 시각은 각 도시의 현지 시각 기준
+const RAIN_MM = 0.1;
 let base = null, updated = "";
 const data = {};
 const RAIN = "#4472C4", DRY = "#FFC000";
@@ -286,39 +764,65 @@ const absN = c => Math.round(unit === "C" ? c : c*9/5+32) + "°";
 const absFmt = c => absN(c) + unit;
 const dFmt = d => { const v = Math.round(conv(d)); return (v > 0 ? "+" : "") + (v === 0 ? 0 : v) + "°"; };
 
-async function fetchChunk(list){
+// <helpers>
+const p2 = n => String(n).padStart(2, "0");
+const ymd = d => d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate());
+const shiftDay = (str, n) => { const [y, m, d] = str.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+const nowSel = () => { const d = new Date(); return { date:ymd(d), hour:d.getHours() }; };
+let sel = nowSel();
+function pick(raw, key){
+  if(!raw) return null;
+  const i = raw.time.indexOf(key);
+  if(i < 0 || raw.t[i] == null) return null;
+  return { t:raw.t[i], r:raw.p[i] == null ? 0 : raw.p[i] };
+}
+function seoulKey(){ return sel.date + "T" + p2(sel.hour) + ":00"; }
+function capKey(raw){
+  if(tmode === "local") return seoulKey();
+  const [y, m, d] = sel.date.split("-").map(Number);
+  const ms = Date.UTC(y, m - 1, d, sel.hour) - 9 * 3600000 + ((raw && raw.off) || 0) * 1000;
+  return new Date(ms).toISOString().slice(0, 13) + ":00";
+}
+// </helpers>
+
+async function fetchChunk(list, day){
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + list.map(c => c.lat).join(",")
-    + "&longitude=" + list.map(c => c.lon).join(",") + "&hourly=temperature_2m,precipitation&forecast_days=1&timezone=auto";
+    + "&longitude=" + list.map(c => c.lon).join(",") + "&hourly=temperature_2m,precipitation"
+    + "&start_date=" + shiftDay(day, -1) + "&end_date=" + shiftDay(day, 1) + "&timezone=auto";
   const res = await fetch(url);
   if(!res.ok) throw new Error("HTTP " + res.status);
   const j = await res.json();
   return (Array.isArray(j) ? j : [j]).map(d => ({
-    am:{ t:d.hourly.temperature_2m[AM_H], r:d.hourly.precipitation[AM_H] },
-    pm:{ t:d.hourly.temperature_2m[PM_H], r:d.hourly.precipitation[PM_H] }
+    time:d.hourly.time, t:d.hourly.temperature_2m, p:d.hourly.precipitation, off:d.utc_offset_seconds
   }));
 }
 async function refreshAll(){
-  $("status").textContent = "전 세계 수도 날씨를 불러오는 중…";
-  const all = [SEOUL, ...CAPS], chunks = [];
+  $("status").textContent = "각 나라 수도 날씨를 불러오는 중…";
+  const day = sel.date;
+  BIG.forEach(c => { delete data[c.i]; });
+  const all = [SEOUL, ...CAPS, ...bigNow()], chunks = [];
   for(let i = 0; i < all.length; i += 50) chunks.push(all.slice(i, i + 50));
   let failed = 0;
   await Promise.all(chunks.map(async (ch, ci) => {
     try{
-      (await fetchChunk(ch)).forEach((o, k) => { const idx = ci*50 + k - 1; if(idx < 0) base = o; else data[idx] = o; });
+      (await fetchChunk(ch, day)).forEach((o, k) => { const c = all[ci*50 + k]; if(c === SEOUL) base = o; else data[c.i] = o; });
     }catch(e){ failed += ch.length; }
   }));
-  $("err").textContent = failed ? "일부 수도는 불러오지 못했어요. 새로고침을 눌러 보세요." : "";
+  $("err").textContent = failed ? "일부 도시는 불러오지 못했어요. 현재 버튼을 누르거나 잠시 뒤 다시 열어 보세요." : "";
   if(!failed || base) updated = new Date().toLocaleTimeString("ko-KR", { hour:"2-digit", minute:"2-digit" });
   renderMarkers(); setStatus();
 }
 function setStatus(){
-  $("status").textContent = base && updated
-    ? "기준: 서울 오전 6시 " + absFmt(base.am.t) + " = 0, 오후 8시 " + absFmt(base.pm.t) + " = 0 · 마지막 갱신 " + updated
-    : "서울 기준 기온을 불러오지 못했어요. 새로고침을 눌러 주세요.";
+  const bk = pick(base, seoulKey());
+  const when = sel.date.replace(/-/g, ".") + " " + p2(sel.hour) + "시";
+  $("status").textContent = bk && updated
+    ? "기준: 서울 " + when + " " + absFmt(bk.t) + " = 0 · " + (tmode === "local" ? "각 도시의 현지 시각 " + p2(sel.hour) + "시" : "서울 " + p2(sel.hour) + "시와 같은 순간") + " · 마지막 갱신 " + updated
+    : "서울 기준 기온을 불러오지 못했어요. 날짜를 확인하고 현재 버튼을 눌러 주세요.";
 }
 
 /* ---------- 지도 ---------- */
 const NS = "http://www.w3.org/2000/svg";
+function niceStep(range){ for(const st of [1, 2, 5, 10, 20, 50]) if(range / st <= 8) return st; return 100; }
 function el(name, attrs, text){
   const e = document.createElementNS(NS, name);
   for(const k in attrs) e.setAttribute(k, attrs[k]);
@@ -328,7 +832,8 @@ function el(name, attrs, text){
 const K = 2.8, WW = 360*K, WH = 140*K;                 // 위도 84 ~ -56 범위, 경도 -180 ~ 180
 const proj = (lon, lat) => [(lon + 180) * K, (84 - lat) * K];
 let vb = { x:0, y:0, w:WW, h:WH };
-let svg, defs, gMarks, landPath;
+let baseW = WW;   // 처음 전체 화면일 때의 지도 폭 (확대 정도의 기준)
+let svg, defs, gMarks, landPath, borderPath;
 const cw = () => $("map").clientWidth || 800, ch = () => $("map").clientHeight || 400;
 const U = () => vb.w / cw();                           // 화면 1px = 지도 U 단위
 
@@ -357,21 +862,23 @@ function zoomAt(f, cx, cy){
 }
 
 function initMap(){
-  svg = el("svg", { preserveAspectRatio:"xMidYMid slice", role:"img", "aria-label":"세계 수도 기온 지도" });
+  svg = el("svg", { preserveAspectRatio:"xMidYMid slice", role:"img", "aria-label":"세계 날씨 지도" });
   defs = el("defs", {}); svg.append(defs);
   for(let lo = -180; lo <= 180; lo += 30){ const [x] = proj(lo, 0); svg.append(el("line", { x1:x, x2:x, y1:0, y2:WH, stroke:"#fff", "stroke-opacity":".5", "vector-effect":"non-scaling-stroke" })); }
   for(let la = -30; la <= 60; la += 30){ const [, y] = proj(0, la); svg.append(el("line", { x1:0, x2:WW, y1:y, y2:y, stroke:"#fff", "stroke-opacity":".5", "vector-effect":"non-scaling-stroke" })); }
   landPath = el("path", { fill:"#f4f1e8", stroke:"#8d99a3", "stroke-width":1, "fill-rule":"evenodd", "stroke-linejoin":"round", "vector-effect":"non-scaling-stroke" });
   svg.append(landPath);
+  borderPath = el("path", { fill:"none", stroke:"#7f8b95", "stroke-width":0.8, "stroke-linejoin":"round", "stroke-linecap":"round", "vector-effect":"non-scaling-stroke" });
+  svg.append(borderPath);
   gMarks = el("g", {}); svg.append(gMarks);
   $("map").append(svg);
-  fitBox(...BOX.ALL);
+  fitBox(...BOX.ALL); baseW = vb.w;
   loadLand();
 }
 
 async function loadLand(){
   try{
-    const r = await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json");
+    const r = await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json");
     if(!r.ok) throw new Error("HTTP " + r.status);
     const t = await r.json();
     const [sx, sy] = t.transform.scale, [tx, ty] = t.transform.translate;
@@ -383,54 +890,103 @@ async function loadLand(){
       else if(g.type === "MultiPolygon") g.arcs.forEach(p => p.forEach(rg => rings.push(ring(rg))));
       else if(g.type === "Polygon") g.arcs.forEach(rg => rings.push(ring(rg)));
     };
-    Object.values(t.objects).forEach(walk);
+    walk(t.objects.land || t.objects.countries);   // 육지(바다와의 경계)
+    // 국가 경계선: 두 나라가 함께 쓰는 선만 모아서 그려요
+    const cnt = new Map();
+    (t.objects.countries.geometries || []).forEach(g => {
+      const seen = new Set();
+      const visit = a => Array.isArray(a) ? a.forEach(visit) : seen.add(a < 0 ? ~a : a);
+      visit(g.arcs || []);
+      seen.forEach(i => cnt.set(i, (cnt.get(i) || 0) + 1));
+    });
+    const shared = [...cnt].filter(([, n]) => n >= 2).map(([i]) => i);
+    borderPath.setAttribute("d", shared.map(i => "M" + arcs[i].map(p => proj(p[0], p[1]).map(v => v.toFixed(1)).join(",")).join("L")).join(""));
     landPath.setAttribute("d", rings.map(rg => "M" + rg.map(p => proj(p[0], p[1]).map(v => v.toFixed(1)).join(",")).join("L") + "Z").join(""));
   }catch(e){
-    $("err").textContent = ($("err").textContent ? $("err").textContent + " " : "") + "육지 윤곽을 불러오지 못해 격자만 표시해요. 수도 위치는 정확해요.";
+    $("err").textContent = ($("err").textContent ? $("err").textContent + " " : "") + "육지 윤곽과 국가 경계선을 불러오지 못해 격자만 표시해요. 도시 위치는 정확해요.";
   }
 }
+
+// <heat>
+const mixc = (a, b2, t) => a.map((v, i) => Math.round(v + (b2[i] - v) * t));
+const HEAT = { hot:[[251, 213, 207], [198, 40, 40]], cold:[[212, 228, 247], [27, 79, 156]] };
+function heat(d){
+  if(Math.abs(d) < 0.5) return { fill:"#e6e6e6", ink:"#222222" };      // 서울과 비슷
+  const [lo, hi] = d > 0 ? HEAT.hot : HEAT.cold;
+  const c = mixc(lo, hi, Math.min(Math.abs(d) / 15, 1));
+  const lum = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+  return { fill:"rgb(" + c.join(",") + ")", ink:lum < 140 ? "#ffffff" : "#222222" };
+}
+// </heat>
 
 function renderMarkers(){
   if(!gMarks) return;
   gMarks.textContent = "";
-  const u = U();
   defs.textContent = "";
-  const pat = el("pattern", { id:"hatch", width:5*u, height:5*u, patternUnits:"userSpaceOnUse", patternTransform:"rotate(45)" });
-  pat.append(el("line", { x1:0, y1:0, x2:0, y2:5*u, stroke:"#fff", "stroke-opacity":".65", "stroke-width":2.4*u }));
-  defs.append(pat);
-  const pad = 40 * u, showName = u < 0.45;
-  const draw = (c, w, isSeoul) => {
+  [["hatchW", "#ffffff", 0.8], ["hatchK", "#000000", 0.55]].forEach(([id, col, op]) => {
+    const pat = el("pattern", { id, width:5 * U(), height:5 * U(), patternUnits:"userSpaceOnUse", patternTransform:"rotate(45)" });
+    pat.append(el("line", { x1:0, y1:0, x2:0, y2:5 * U(), stroke:col, "stroke-opacity":op, "stroke-width":2.2 * U() }));
+    defs.append(pat);
+  });
+  const u = U(), edge = 40 * u, showName = names === "on";
+  const bk = pick(base, seoulKey());
+  const ref = bk ? bk.t : null;
+  const draw = (c, raw, isSeoul) => {
     const [x, y] = proj(c.lon, c.lat);
-    if(x < vb.x - pad || x > vb.x + vb.w + pad || y < vb.y - pad || y > vb.y + vb.h + pad) return;
+    if(x < vb.x - edge || x > vb.x + vb.w + edge || y < vb.y - edge || y > vb.y + vb.h + edge) return;
+    const key = isSeoul ? seoulKey() : capKey(raw);
+    const b = pick(raw, key);
     const abs = isSeoul || mode === "abs";
-    const am = w ? { t:w.am.t, r:w.am.r, ref:base ? base.am.t : 0 } : null;
-    const pm = w ? { t:w.pm.t, r:w.pm.r, ref:base ? base.pm.t : 0 } : null;
-    const parts = show === "am" ? [[am, false]] : show === "pm" ? [[pm, true]] : [[am, false], [pm, true]];
-    const bw = 22 * u, bh = 15 * u, total = bw * parts.length;
+    const zs = Math.min(Math.max(0.5 * Math.sqrt(baseW / vb.w), 0.5), 2.2);   // 확대할수록 원이 커져요 (0.5배~2.2배)
+    const r = 14 * u * zs;
     const g = el("g", { transform:"translate(" + x.toFixed(2) + " " + y.toFixed(2) + ")" });
     g.style.cursor = "pointer";
-    parts.forEach(([b, hatch], k) => {
-      const bx = -total/2 + k*bw;
-      const fill = !b ? "#e5e5e5" : b.r >= RAIN_MM ? RAIN : DRY, ink = !b ? "#666" : b.r >= RAIN_MM ? "#fff" : "#222";
-      g.append(el("rect", { x:bx, y:-bh/2, width:bw, height:bh, fill }));
-      if(hatch && b) g.append(el("rect", { x:bx, y:-bh/2, width:bw, height:bh, fill:"url(#hatch)" }));
-      g.append(el("text", { x:bx + bw/2, y:bh*0.22, "text-anchor":"middle", "font-size":10.5*u, "font-weight":600, fill:ink }, !b ? "…" : abs ? absN(b.t) : dFmt(b.t - b.ref)));
-    });
-    g.append(el("rect", { x:-total/2, y:-bh/2, width:total, height:bh, fill:"none", stroke:isSeoul ? "#000" : "#444", "stroke-width":(isSeoul ? 2 : 0.8) * u }));
-    if(isSeoul || showName){
-      const t = el("text", { x:0, y:-bh/2 - 3*u, "text-anchor":"middle", "font-size":10*u, "font-weight":isSeoul ? 700 : 400, fill:"#111",
-        stroke:"#fff", "stroke-width":2.5*u, "paint-order":"stroke" }, isSeoul ? "서울 (기준)" : c.name);
-      g.append(t);
+    let fill = "#f2f2f2", ink = "#555555";
+    if(b){
+      if(isSeoul) { fill = "#333333"; ink = "#ffffff"; }
+      else if(ref == null) { fill = "#e6e6e6"; ink = "#222222"; }
+      else { const hc = heat(b.t - ref); fill = hc.fill; ink = hc.ink; }
     }
-    if(w){
-      const f = (b, lab, ref) => lab + " " + absFmt(b.t) + (isSeoul ? "" : " (서울 대비 " + dFmt(b.t - ref) + ")") + " · 강수량 " + b.r.toFixed(1) + " mm" + (b.r >= RAIN_MM ? " (비)" : " (없음)");
-      const text = c.name + " (" + c.country + ") — " + f(w.am, "오전 6시", base ? base.am.t : 0) + " / " + f(w.pm, "오후 8시", base ? base.pm.t : 0);
+    const circ = { cx:0, cy:0, r, fill };
+    g.append(el("circle", circ));
+    if(b && b.r >= RAIN_MM) g.append(el("circle", { cx:0, cy:0, r, fill:ink === "#ffffff" ? "url(#hatchW)" : "url(#hatchK)" }));
+    const txt = !raw ? "…" : !b ? "–" : abs ? absN(b.t) : ref == null ? "–" : dFmt(b.t - ref);
+    g.append(el("text", { x:0, y:r*0.3, "text-anchor":"middle", "font-size":Math.max(7.5, 9 * zs) * u, "font-weight":700, fill:ink,
+      stroke:fill, "stroke-width":2 * u, "paint-order":"stroke", "stroke-linejoin":"round" }, txt));
+    if(isSeoul || showName){
+      g.append(el("text", { x:0, y:-r - 3*u, "text-anchor":"middle", "font-size":8.5*u, "font-weight":isSeoul || c.extra ? 700 : 400, fill:"#111",
+        stroke:"#fff", "stroke-width":2.5*u, "paint-order":"stroke" }, isSeoul ? "서울 (기준)" : c.name));
+    }
+    if(b){
+      const lt = key.slice(5, 10) + " " + key.slice(11, 13) + "시";
+      const text = (isSeoul ? "서울 (기준)" : c.extra ? "추가 도시 " + c.label : (c.big ? "도시 " : "수도 ") + c.name + " (" + c.country + ")") + " — 현지 " + lt
+        + " · 기온 " + absFmt(b.t) + (isSeoul || ref == null ? "" : " (서울 대비 " + dFmt(b.t - ref) + ")")
+        + " · 강수량 " + b.r.toFixed(1) + " mm" + (b.r >= RAIN_MM ? " (비)" : " (없음)");
       g.append(el("title", {}, text));
       g.addEventListener("click", () => { if(dragD < 6) $("info").textContent = text; });
     }
+    g.addEventListener("click", () => { if(dragD < 6) openDetail(c, isSeoul); });
     gMarks.append(g);
   };
-  CAPS.forEach(c => { const w = data[c.i]; if(base && w) draw(c, w, false); });
+  // 국가 이름: 원 아래 깔리는 회색 글씨. 인구가 많은 도시의 나라부터 놓고 겹치면 건너뛰어요(확대하면 더 많이 보여요)
+  const fsC = 12 * u, placed = [];
+  const seenC = new Set();
+  const ctryLabels = CAPS.filter(c => (curCont === "ALL" || c.cont === curCont)).filter(c => c.country !== c.name && !seenC.has(c.country) && seenC.add(c.country)).map(c => { const q = CTRY[c.country] || [c.lon, c.lat]; return { name:c.country, lon:q[0], lat:q[1] }; })
+    .concat((curCont === "ALL" || curCont === "A" ? CTRY_EXTRA : []).map(c => ({ name:c.country, lon:c.lon, lat:c.lat })));
+  ctryLabels.forEach(L2 => {
+    const [lx, ly] = proj(L2.lon, L2.lat);
+    if(lx < vb.x - edge || lx > vb.x + vb.w + edge || ly < vb.y - edge || ly > vb.y + vb.h + edge) return;
+    const w2 = L2.name.length * fsC * 1.02 + 6 * u, h2 = fsC * 1.3;
+    const bx = { x0:lx - w2 / 2, x1:lx + w2 / 2, y0:ly - h2 / 2, y1:ly + h2 / 2 };
+    if(placed.some(p => bx.x0 < p.x1 && bx.x1 > p.x0 && bx.y0 < p.y1 && bx.y1 > p.y0)) return;
+    placed.push(bx);
+    const t = el("text", { x:lx, y:ly + fsC * 0.35, "text-anchor":"middle", "font-size":fsC, "font-weight":600, fill:"#5b6770",
+      stroke:"#f4f1e8", "stroke-width":3 * u, "paint-order":"stroke", "stroke-linejoin":"round" }, L2.name);
+    t.style.pointerEvents = "none";
+    gMarks.append(t);
+  });
+  CAPS.concat(bigNow()).filter(c => curCont === "ALL" || c.cont === curCont).forEach(c => { const w = data[c.i]; if(w) draw(c, w, false); });
+  if(extra && data[CAPS.length]) draw({ i:CAPS.length, extra:true, name:extra.name, country:extra.name, label:extra.label, lat:extra.lat, lon:extra.lon }, data[CAPS.length], false);
   draw(SEOUL, base, true);
 }
 
@@ -441,7 +997,8 @@ window.addEventListener("pointermove", e => {
   const p = pts.get(e.pointerId); if(!p) return;
   if(pts.size === 1){
     const dx = e.clientX - p.x, dy = e.clientY - p.y, u = U();
-    dragD += Math.abs(dx) + Math.abs(dy);
+    if(dragD < 6){ dragD = Math.max(dragD, Math.abs(dx) + Math.abs(dy)); if(dragD < 6) return; }
+    else dragD += Math.abs(dx) + Math.abs(dy);
     vb.x -= dx * u; vb.y -= dy * u; clampView(); applyView(true);
   } else if(pts.size === 2){
     const o = [...pts.entries()].find(([id]) => id !== e.pointerId)[1];
@@ -455,22 +1012,214 @@ window.addEventListener("pointermove", e => {
 $("map").addEventListener("wheel", e => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX, e.clientY); }, { passive:false });
 $("zin").onclick = () => { const r = $("map").getBoundingClientRect(); zoomAt(1.5, r.left + r.width/2, r.top + r.height/2); };
 $("zout").onclick = () => { const r = $("map").getBoundingClientRect(); zoomAt(1/1.5, r.left + r.width/2, r.top + r.height/2); };
-$("focus").onchange = e => fitBox(...BOX[e.target.value]);
 
-const SHOW_LABEL = { both:"오전+오후", am:"오전만", pm:"오후만" };
-$("show").textContent = "시간: " + SHOW_LABEL[show];
-$("mode").textContent = "표시: " + (mode === "diff" ? "서울 대비" : "실제 기온");
+const dateEl = $("date"), hourEl = $("hour");
+for(let h = 0; h < 24; h++){ const o = document.createElement("option"); o.value = String(h); o.textContent = p2(h) + "시"; hourEl.append(o); }
+const todayStr = ymd(new Date());
+dateEl.min = shiftDay(todayStr, -90); dateEl.max = shiftDay(todayStr, 14);
+function syncSel(){ dateEl.value = sel.date; hourEl.value = String(sel.hour); }
+syncSel();
+dateEl.onchange = () => {
+  const v = dateEl.value;
+  if(!v || v < dateEl.min || v > dateEl.max){ syncSel(); $("err").textContent = "날짜는 오늘 기준 90일 전부터 14일 후까지 고를 수 있어요."; return; }
+  sel.date = v; refreshAll();
+};
+hourEl.onchange = () => { sel.hour = +hourEl.value; renderMarkers(); setStatus(); };
+$("nowbtn").onclick = () => { sel = nowSel(); syncSel(); refreshAll(); };
+$("mode").textContent = (mode === "diff" ? "서울 대비" : "실제 기온");
 $("unit").textContent = "°" + unit;
-$("show").onclick = () => { show = show === "both" ? "am" : show === "am" ? "pm" : "both"; save("show", show); $("show").textContent = "시간: " + SHOW_LABEL[show]; renderMarkers(); };
-$("mode").onclick = () => { mode = mode === "diff" ? "abs" : "diff"; save("mode", mode); $("mode").textContent = "표시: " + (mode === "diff" ? "서울 대비" : "실제 기온"); renderMarkers(); };
+$("mode").onclick = () => { mode = mode === "diff" ? "abs" : "diff"; save("mode", mode); $("mode").textContent = (mode === "diff" ? "서울 대비" : "실제 기온"); renderMarkers(); };
 $("unit").onclick = () => { unit = unit === "C" ? "F" : "C"; save("unit", unit); $("unit").textContent = "°" + unit; renderMarkers(); if(updated) setStatus(); };
-$("refresh").onclick = refreshAll;
+
+/* 대륙 선택 */
+$("cont").onchange = () => { curCont = $("cont").value; fitBox(...BOX[curCont]); if(curCont !== "ALL") loadBig(); };
+async function loadBig(){
+  const list = bigNow().filter(c => !data[c.i]);
+  if(!list.length) return;
+  let failed = 0;
+  await Promise.all(Array.from({ length:Math.ceil(list.length / 50) }, (_, ci) => list.slice(ci*50, ci*50 + 50)).map(async ch => {
+    try{ (await fetchChunk(ch, sel.date)).forEach((o, k) => { data[ch[k].i] = o; }); }catch(e){ failed += ch.length; }
+  }));
+  $("err").textContent = failed ? "일부 도시는 불러오지 못했어요. 현재 버튼을 누르거나 잠시 뒤 다시 열어 보세요." : "";
+  renderMarkers();
+}
+/* ---------- 도시 일주일 기온 (새 화면) ---------- */
+const WD = ["일", "월", "화", "수", "목", "금", "토"];
+let detailCity = null, detailReq = 0, detailData = null, dmode = "diff", cmpCity = null;
+// <week>
+function weekRange(){
+  const maxEnd = shiftDay(todayStr, 15);              // 예보는 오늘부터 15일 뒤까지
+  let start = sel.date, end = shiftDay(start, 6), clamped = false;
+  if(end > maxEnd){ end = maxEnd; start = shiftDay(end, -6); clamped = true; }
+  return { start, end, clamped };
+}
+// </week>
+const cityTitle = (c, isSeoul) => isSeoul ? "서울" : c.extra ? c.label : c.name + " (" + c.country + ")";
+async function openDetail(c, isSeoul){
+  detailCity = { c, isSeoul };
+  if($("detail").hidden){ try{ history.pushState({ detail:1 }, ""); }catch(e){} }
+  $("detail").hidden = false;
+  document.body.style.overflow = "hidden";
+  $("detail").scrollTop = 0;
+  setCmp(null, true);
+  dmode = isSeoul ? "abs" : mode;          // 처음엔 지도에서 쓰던 비교 방식을 따라가요
+  syncDMode();
+  $("dclose").focus();
+  $("dtitle").textContent = cityTitle(c, isSeoul) + " · 일주일 기온";
+  await loadDetail();
+}
+function syncDMode(){
+  const seoul = !!(detailCity && detailCity.isSeoul);
+  $("dm-diff").setAttribute("aria-pressed", String(dmode === "diff"));
+  $("dm-abs").setAttribute("aria-pressed", String(dmode === "abs"));
+  $("dm-diff").disabled = seoul;
+  $("dmodeinfo").textContent = seoul ? "서울은 비교 기준이라 현재 기온만 볼 수 있어요."
+    : dmode === "diff" ? "서울의 같은 날 최고·최저 기온을 0으로 둔 차이예요(+는 서울보다 더운 날, −는 추운 날)."
+    : "그날의 실제 하루 최고·최저 기온이에요.";
+}
+function hideDetail(){ $("detail").hidden = true; document.body.style.overflow = ""; detailCity = null; detailData = null; cmpCity = null; detailReq++; }
+function closeDetail(){ if(history.state && history.state.detail) history.back(); else hideDetail(); }
+async function loadDetail(){
+  if(!detailCity) return;
+  const c = detailCity.c, seoul = detailCity.isSeoul, rg = weekRange(), req = ++detailReq;
+  const md = x => x.slice(5).replace("-", "/");
+  $("dsub").textContent = md(rg.start) + " ~ " + md(rg.end) + " · 하루 최고·최저 기온 (현지 날짜 기준)"
+    + (rg.clamped ? " · 예보는 오늘부터 15일 뒤까지라서 기간을 앞으로 당겼어요" : "");
+  $("dchart").textContent = "";
+  $("dmsg").textContent = "불러오는 중…"; $("dretry").hidden = true;
+  try{
+    const lats = (seoul ? [c.lat] : [c.lat, SEOUL.lat]).concat(cmpCity ? [cmpCity.lat] : []), lons = (seoul ? [c.lon] : [c.lon, SEOUL.lon]).concat(cmpCity ? [cmpCity.lon] : []);   // 서울 대비를 위해 서울도 함께 받아요
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=" + lats.join(",") + "&longitude=" + lons.join(",")
+      + "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&start_date=" + rg.start + "&end_date=" + rg.end + "&timezone=auto";
+    const res = await fetch(url);
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const j = await res.json();
+    if(req !== detailReq) return;
+    const arr = Array.isArray(j) ? j : [j];
+    detailData = { c:arr[0].daily, s:seoul || !arr[1] ? null : arr[1].daily, p:cmpCity && arr[arr.length - 1] !== arr[0] ? arr[arr.length - 1].daily : null };
+    $("dmsg").textContent = "";
+    drawWeek(detailData);
+  }catch(e){
+    if(req !== detailReq) return;
+    $("dmsg").textContent = "일주일 날씨를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.";
+    $("dretry").hidden = false;
+  }
+}
+function drawWeek(dd){
+  const d = dd.c, sd = dd.s, pd = dd.p, diff = dmode === "diff" && !!sd;
+  const box = $("dchart"); box.textContent = "";
+  const cv = v => v == null ? null : (unit === "C" ? v : v * 9 / 5 + 32);
+  const cd = v => unit === "C" ? v : v * 9 / 5;
+  const days = d.time.map((t, i) => {
+    const h = d.temperature_2m_max[i], l = d.temperature_2m_min[i];
+    const sh = sd ? sd.temperature_2m_max[i] : null, sl = sd ? sd.temperature_2m_min[i] : null;
+    const ph2 = pd ? pd.temperature_2m_max[i] : null, pl2 = pd ? pd.temperature_2m_min[i] : null;
+    const ok = h != null && l != null && (!diff || (sh != null && sl != null)) && (!pd || (ph2 != null && pl2 != null));
+    return { t, ok, ah:cv(h), al:cv(l), dh:ok && sd ? cd(h - sh) : null, dl:ok && sd ? cd(l - sl) : null, mm:d.precipitation_sum[i] || 0, bh:cv(ph2), bl:cv(pl2), bdh:ok && sd && pd ? cd(ph2 - sh) : null, bdl:ok && sd && pd ? cd(pl2 - sl) : null, pmm:pd ? (pd.precipitation_sum[i] || 0) : 0 };
+  }).filter(x => x.ok).map(x => Object.assign(x, { hi:diff ? x.dh : x.ah, lo:diff ? x.dl : x.al, chi:diff ? x.bdh : x.bh, clo:diff ? x.bdl : x.bl }));
+  if(!days.length){ $("dmsg").textContent = "이 기간의 데이터가 없어요."; return; }
+  const sgn = v => { const r = Math.round(v); return (r > 0 ? "+" : "") + (r === 0 ? 0 : r); };
+  const fv = v => diff ? sgn(v) + "°" : Math.round(v) + "°";
+  const W = Math.max(box.clientWidth, 320), H = 380, L = 46, R = 12, T = 30, B = 76;
+  const vals = [0]; days.forEach(x => { vals.push(x.hi, x.lo); if(pd) vals.push(x.chi, x.clo); });
+  const step = niceStep(Math.max(...vals) - Math.min(...vals) || 1);
+  const min = Math.floor((Math.min(...vals) - step * 0.4) / step) * step;
+  let max = Math.ceil((Math.max(...vals) + step * 0.4) / step) * step; if(max === min) max = min + step;
+  const ph = H - T - B, y = v => T + (max - v) / (max - min) * ph;
+  const svg = el("svg", { viewBox:"0 0 " + W + " " + H, role:"img",
+    "aria-label":cityTitle(detailCity.c, detailCity.isSeoul) + (cmpCity ? " 과 " + cmpCity.label + " 비교, 일주일 " : " 일주일 ") + (diff ? "서울 대비 " : "") + "최고·최저 기온 막대 차트" });
+  const defs = el("defs", {});
+  const pat = el("pattern", { id:"wkHatch", width:6, height:6, patternUnits:"userSpaceOnUse", patternTransform:"rotate(45)" });
+  pat.append(el("line", { x1:0, y1:0, x2:0, y2:6, stroke:"#ffffff", "stroke-opacity":".8", "stroke-width":2.6 }));
+  defs.append(pat); svg.append(defs);
+  for(let v = min; v <= max + 1e-9; v += step){
+    svg.append(el("line", { x1:L, x2:W - R, y1:y(v), y2:y(v), stroke:"currentColor", "stroke-opacity":".12", "stroke-dasharray":"2 5" }));
+    svg.append(el("text", { x:L - 6, y:y(v) + 4, "text-anchor":"end", "font-size":11, class:"ax" }, diff && v > 0 ? "+" + v : String(v)));
+  }
+  svg.append(el("text", { x:6, y:16, "font-size":11, class:"ax" }, (diff ? "서울 대비 °" : "°") + unit));
+  const sw = (W - L - R) / days.length, nb = pd ? 4 : 2, bw = Math.min(pd ? 20 : 28, sw / (nb + 0.5)), vf = pd ? 9 : 12;
+  const n1 = cityTitle(detailCity.c, detailCity.isSeoul), n2 = cmpCity ? cmpCity.label : "";
+  days.forEach((x, i) => {
+    if(x.t === sel.date) svg.append(el("rect", { x:L + sw * i + 3, y:T - 14, width:sw - 6, height:ph + 14 + 60, rx:10, style:"fill:var(--accent);fill-opacity:.08" }));
+  });
+  days.forEach((x, i) => {
+    const cx = L + sw * i + sw / 2, rain = x.mm >= RAIN_MM;
+    const bars = [[x.hi, "#ee6a5b", "최고", x.ah, x.dh, x.mm, n1], [x.lo, "#4a86d6", "최저", x.al, x.dl, x.mm, n1]]
+      .concat(pd ? [[x.chi, "#f7b267", "최고", x.bh, x.bdh, x.pmm, n2], [x.clo, "#9fc5f0", "최저", x.bl, x.bdl, x.pmm, n2]] : []);
+    bars.forEach(([v, col, nm, abs, dv, mmv, who], k) => {
+      const bx = cx - bw * nb / 2 + bw * k, rn = mmv >= RAIN_MM;
+      const top = Math.min(y(v), y(0)), h = Math.max(Math.abs(y(v) - y(0)), 1);
+      const g = el("g", {});
+      g.append(el("title", {}, (pd ? who + " " : "") + x.t + " " + nm + " " + Math.round(abs) + "°" + unit + (sd && dv != null ? " (서울 대비 " + sgn(dv) + "°)" : "")
+        + " · 강수량 " + mmv.toFixed(1) + " mm" + (rn ? " (비)" : "")));
+      g.append(el("rect", { x:bx, y:top, width:bw, height:h, fill:col, rx:Math.min(5, bw / 3) }));
+      if(rn) g.append(el("rect", { x:bx, y:top, width:bw, height:h, fill:"url(#wkHatch)", rx:Math.min(5, bw / 3) }));
+      g.append(el("text", { x:bx + bw / 2, y:v >= 0 ? top - 4 : top + h + 13, "text-anchor":"middle", "font-size":vf - 1, "font-weight":600 }, fv(v)));
+      svg.append(g);
+    });
+    const [yy, mm, dd2] = x.t.split("-").map(Number), wd = WD[new Date(Date.UTC(yy, mm - 1, dd2)).getUTCDay()];
+    const bs = T + ph;
+    const isSel = x.t === sel.date;
+    svg.append(el("text", { x:cx, y:bs + 20, "text-anchor":"middle", "font-size":13, class:isSel ? "dn" : "" }, mm + "/" + dd2));
+    svg.append(el("text", { x:cx, y:bs + 36, "text-anchor":"middle", "font-size":11, class:"ax" }, wd));
+    const rw = Math.min(sw - 8, 46);
+    if(rain) svg.append(el("rect", { x:cx - rw / 2, y:bs + 43, width:rw, height:17, rx:8.5, fill:"#4a86d6", "fill-opacity":".16" }));
+    svg.append(el("text", { x:cx, y:bs + 55, "text-anchor":"middle", "font-size":10.5, "font-weight":rain ? 700 : 400, class:rain ? "" : "ax", style:rain ? "fill:#4a86d6" : "" }, rain ? x.mm.toFixed(1) + "mm" : "–"));
+  });
+  svg.append(el("line", { x1:L, x2:W - R, y1:y(0), y2:y(0), stroke:"currentColor", "stroke-opacity":".7", "stroke-width":1.5 }));
+  box.append(svg);
+}
+const setDMode = m => { if(m === "diff" && detailCity && detailCity.isSeoul) return; dmode = m; syncDMode(); if(detailData) drawWeek(detailData); };
+$("dm-diff").onclick = () => setDMode("diff");
+$("dm-abs").onclick = () => setDMode("abs");
+$("dclose").onclick = closeDetail;
+/* 비교 도시 */
+const KNOWN = {}; CAPS.concat(BIG).forEach(c => { if(!KNOWN[c.name]) KNOWN[c.name] = c; });
+$("dcl").append(...Object.keys(KNOWN).map(n => { const o = document.createElement("option"); o.value = n; return o; }));
+function setCmp(c, silent){
+  cmpCity = c;
+  $("dcname").hidden = !c; $("dcclear").hidden = !c;
+  $("dcname").textContent = ""; 
+  if(c){ const i = document.createElement("i"); $("dcname").append(i, "비교: " + c.label + " (밝은 색 막대)"); }
+  $("dcpanel").hidden = true; $("dcbtn").setAttribute("aria-expanded", "false"); $("dcres").hidden = true;
+  if(!silent) loadDetail();
+}
+$("dcbtn").onclick = () => { const open = $("dcpanel").hidden; $("dcpanel").hidden = !open; $("dcbtn").setAttribute("aria-expanded", String(open)); if(open) $("dcq").focus(); };
+$("dcclear").onclick = () => setCmp(null);
+async function dcSearch(){
+  const v = $("dcq").value.trim(); if(!v) return;
+  if(KNOWN[v]){ const k = KNOWN[v]; return setCmp({ label:k.name + " (" + k.country + ")", lat:k.lat, lon:k.lon }); }
+  const box = $("dcres"); box.textContent = "";
+  const msg = t => { const li = document.createElement("li"); li.className = "none"; li.textContent = t; box.append(li); };
+  try{
+    const res = await fetch("https://geocoding-api.open-meteo.com/v1/search?count=8&language=ko&name=" + encodeURIComponent(v));
+    const d = await res.json();
+    if(!d.results || !d.results.length) msg("찾지 못했어요. 다른 표기로 입력해 보세요.");
+    else d.results.forEach(r => {
+      const li = document.createElement("li"); li.tabIndex = 0;
+      li.textContent = r.name + " ";
+      const sm = document.createElement("small"); sm.textContent = [r.admin1, r.country].filter(Boolean).join(", "); li.append(sm);
+      const pick1 = () => setCmp({ label:r.name + (r.country ? " (" + r.country + ")" : ""), lat:r.latitude, lon:r.longitude });
+      li.onclick = pick1; li.onkeydown = ev => { if(ev.key === "Enter") pick1(); };
+      box.append(li);
+    });
+  }catch(e){ msg("검색에 실패했어요. 인터넷 연결을 확인해 주세요."); }
+  box.hidden = false;
+}
+$("dcgo").onclick = dcSearch;
+$("dcq").addEventListener("keydown", e => { if(e.key === "Enter") dcSearch(); });
+$("dcq").addEventListener("change", () => { if(KNOWN[$("dcq").value.trim()]) dcSearch(); });
+
+$("dretry").onclick = loadDetail;
+window.addEventListener("popstate", () => { if(!$("detail").hidden) hideDetail(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("detail").hidden) closeDetail(); });
+let dt; window.addEventListener("resize", () => { clearTimeout(dt); dt = setTimeout(() => { if(detailData && !$("detail").hidden) drawWeek(detailData); }, 150); });
+
 let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { vb.h = vb.w * ch() / cw(); clampView(); applyView(true); }, 150); });
 
 initMap(); renderMarkers(); refreshAll();
-setInterval(refreshAll, 60 * 60 * 1000);
-</script>
-<script>
+setInterval(refreshAll, 10 * 60 * 1000);
+
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
 }
