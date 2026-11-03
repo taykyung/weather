@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f5fa0">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="수도날씨">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<title>한국 100만 도시 기온 지도</title>
+<style>
+:root{--bg:#fff;--ink:#1f2328;--muted:#5f6b76;--grid:#c9d0d6;--surface:#fff;--accent:#2f7fd8;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#14191e;--ink:#e7ecf0;--muted:#97a4af;--grid:#3a454f;--surface:#1b232a;--accent:#5aa9f0;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;padding:16px;line-height:1.4}
+main{max-width:1100px;margin:0 auto}
+h1{font-size:1.25rem;margin:0 0 4px}
+.status{font-size:.85rem;color:var(--muted);margin:0 0 12px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--grid);border-radius:4px;padding:9px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.85rem;margin-bottom:8px;align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:16px;height:16px;border:1px solid rgba(0,0,0,.3);display:inline-block}
+.sw.dry,.c.dry{background-color:#FFC000;color:#222}
+.sw.rain,.c.rain{background-color:#4472C4;color:#fff}
+.sw.h,.c.h{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.6) 0 3px,transparent 3px 6px)}
+.sw.gray{background:#7f7f7f}
+#map{border:1px solid var(--grid);border-radius:4px;background:#dbe9f3}
+#map svg{display:block;width:100%;height:auto;max-height:88vh;margin:0 auto}
+#map text{font-family:inherit}
+.info{min-height:1.4em;font-size:.88rem;margin-top:8px}
+.err{color:#b3261e;font-size:.85rem;margin-top:6px}
+.note{font-size:.78rem;color:var(--muted);margin-top:8px}
+body{padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(16px,env(safe-area-inset-bottom))}
+</style>
+</head>
+<body>
+<main>
+  <h1>한국 100만 도시 기온 지도</h1>
+  <p class="status" id="status" aria-live="polite"></p>
+  <div class="tools">
+    <button id="mode" type="button">표시: 서울 대비</button>
+    <button id="unit" type="button" aria-label="온도 단위 전환">°C</button>
+    <button id="refresh" type="button">새로고침</button>
+  </div>
+  <div class="legend" aria-label="범례">
+    <span><i class="sw dry"></i>비 안 옴</span>
+    <span><i class="sw rain"></i>비 옴</span>
+    <span><i class="sw gray"></i>왼쪽: 오전 6시</span>
+    <span><i class="sw gray h"></i>오른쪽(빗금): 오후 8시</span>
+  </div>
+  <div id="map" role="application" aria-label="한국 지도"></div>
+  <div class="info" id="info" aria-live="polite">도시 표시를 누르면 실제 기온과 강수량이 여기에 나와요.</div>
+  <div class="err" id="err"></div>
+  <p class="note">서울 표시는 기준이라 항상 실제 기온을 보여주고, 다른 도시는 서울의 같은 시각 기온보다 얼마나 높고 낮은지 보여줘요. 그 시각에 강수량이 있으면 파란색, 없으면 노란색이에요. 대상은 인구 100만 명 이상 도시(2026년 8월 기준, 서울 제외)이고, 값은 1시간 단위 예보예요. 지도는 인터넷 연결 없이도 보이도록 직접 그린 단순한 윤곽이라 실제 해안선과 조금 달라요.</p>
+</main>
+
+<script>
+const SEOUL = { i:-1, name:"서울", region:"서울특별시", lat:37.57, lon:126.98, dx:70, dy:-58 };
+// 도시|시·도|위도|경도|표시 위치 가로 이동(px)|세로 이동(px)  (가까운 도시끼리 겹치지 않게)
+const RAW = `부산|부산광역시|35.18|129.08|38|36
+인천|인천광역시|37.46|126.71|-100|0
+대구|대구광역시|35.87|128.60|0|-38
+대전|대전광역시|36.35|127.38|0|-38
+광주|광주광역시|35.16|126.85|-10|-38
+수원|경기도|37.26|127.03|-10|70
+울산|울산광역시|35.54|129.31|0|-40
+용인|경기도|37.24|127.18|95|30
+고양|경기도|37.66|126.83|-80|-52
+화성|경기도|37.20|126.83|-100|40
+창원|경상남도|35.23|128.68|-62|34`;
+const CITIES = RAW.split("\n").map((l, i) => { const p = l.split("|");
+  return { i, name:p[0], region:p[1], lat:+p[2], lon:+p[3], dx:+p[4], dy:+p[5] }; });
+
+const $ = id => document.getElementById(id);
+function load(k, f){ try{ const v = localStorage.getItem("krmap:"+k); return v ? JSON.parse(v) : f; }catch(e){ return f; } }
+function save(k, v){ try{ localStorage.setItem("krmap:"+k, JSON.stringify(v)); }catch(e){} }
+
+let unit = load("unit", "C"), mode = load("mode", "diff");
+const AM_H = 6, PM_H = 20, RAIN_MM = 0.1;
+let base = null, updated = "";
+const data = {};
+const conv = d => unit === "C" ? d : d*9/5;
+const absN = c => Math.round(unit === "C" ? c : c*9/5+32) + "°";
+const absFmt = c => absN(c) + unit;
+const dFmt = d => { const v = Math.round(conv(d)); return (v > 0 ? "+" : "") + (v === 0 ? 0 : v) + "°"; };
+
+async function fetchAll(){
+  const all = [SEOUL, ...CITIES];
+  const url = "https://api.open-meteo.com/v1/forecast?latitude=" + all.map(c => c.lat).join(",")
+    + "&longitude=" + all.map(c => c.lon).join(",")
+    + "&hourly=temperature_2m,precipitation&forecast_days=1&timezone=auto";
+  const res = await fetch(url);
+  if(!res.ok) throw new Error("HTTP " + res.status);
+  const j = await res.json();
+  return (Array.isArray(j) ? j : [j]).map(d => ({
+    am:{ t:d.hourly.temperature_2m[AM_H], r:d.hourly.precipitation[AM_H] },
+    pm:{ t:d.hourly.temperature_2m[PM_H], r:d.hourly.precipitation[PM_H] }
+  }));
+}
+
+async function refreshAll(){
+  $("status").textContent = "도시 날씨를 불러오는 중…";
+  try{
+    const out = await fetchAll();
+    base = out[0];
+    out.slice(1).forEach((o, k) => { data[k] = o; });
+    $("err").textContent = "";
+    updated = new Date().toLocaleTimeString("ko-KR", { hour:"2-digit", minute:"2-digit" });
+  }catch(e){
+    $("err").textContent = "날씨를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침을 눌러 주세요.";
+  }
+  render(); setStatus();
+}
+function setStatus(){
+  $("status").textContent = base && updated
+    ? "기준: 서울 오전 6시 " + absFmt(base.am.t) + " = 0, 오후 8시 " + absFmt(base.pm.t) + " = 0 · 마지막 갱신 " + updated
+    : "서울 기준 기온을 불러오지 못했어요.";
+}
+
+/* 지도 (인터넷 없이도 보이는 단순 윤곽) */
+const NS = "http://www.w3.org/2000/svg";
+function el(name, attrs, text){
+  const e = document.createElementNS(NS, name);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(text !== undefined) e.textContent = text;
+  return e;
+}
+const PX_LON = 136.7, PX_LAT = 170, X0 = 130, Y0 = 20;
+const px = (lon, lat) => [(lon - 125.6) * PX_LON + X0, (38.7 - lat) * PX_LAT + Y0];
+// 남한 윤곽(대략): 서해안 → 남해안 → 동해안 → 휴전선
+const COAST = [[126.68,37.77],[126.45,37.65],[126.55,37.40],[126.65,37.15],[126.60,36.95],[126.13,36.85],[126.15,36.65],[126.50,36.40],
+ [126.60,36.00],[126.70,35.95],[126.45,35.65],[126.50,35.45],[126.40,35.25],[126.30,35.00],[126.38,34.80],[126.55,34.30],[126.75,34.30],
+ [126.80,34.60],[127.30,34.55],[127.75,34.70],[127.95,34.75],[128.05,34.95],[128.35,34.85],[128.65,34.80],[128.58,35.05],[128.75,35.10],
+ [129.05,35.07],[129.20,35.20],[129.45,35.45],[129.50,35.80],[129.45,36.05],[129.40,36.50],[129.45,37.00],[129.35,37.40],[128.95,37.75],
+ [128.60,38.20],[128.37,38.62],[128.00,38.45],[127.60,38.33],[127.20,38.30],[126.95,38.10],[126.75,37.95]];
+let gPills = null;
+function initMap(){
+  const W = 760, H = 980;
+  const svg = el("svg", { viewBox:"0 0 " + W + " " + H, role:"img", "aria-label":"한국 지도와 도시별 기온" });
+  const defs = el("defs", {});
+  const pat = el("pattern", { id:"hatch", width:6, height:6, patternUnits:"userSpaceOnUse", patternTransform:"rotate(45)" });
+  pat.append(el("line", { x1:0, y1:0, x2:0, y2:6, "stroke-width":3, stroke:"#fff", "stroke-opacity":".6" }));
+  defs.append(pat); svg.append(defs);
+  const path = pts => "M" + pts.map(p => px(p[0], p[1]).map(v => v.toFixed(1)).join(",")).join("L") + "Z";
+  const jeju = []; for(let k = 0; k < 24; k++){ const t = k / 24 * 2 * Math.PI; jeju.push([126.55 + 0.40 * Math.cos(t), 33.38 + 0.17 * Math.sin(t)]); }
+  [path(COAST), path(jeju)].forEach(d => svg.append(el("path", { d, fill:"#f4f1e8", stroke:"#8d99a3", "stroke-width":1.5, "stroke-linejoin":"round" })));
+  [["황해", 126.0, 36.0], ["동해", 130.0, 36.9], ["남해", 127.6, 33.7]].forEach(([t, lo, la]) => {
+    const [x, y] = px(lo, la); svg.append(el("text", { x, y, "text-anchor":"middle", "font-size":16, fill:"#6d8aa0", "font-style":"italic" }, t));
+  });
+  const [nx, ny] = px(127.8, 38.55);
+  svg.append(el("text", { x:nx, y:ny, "text-anchor":"middle", "font-size":13, fill:"#8d99a3" }, "휴전선 이북"));
+  gPills = el("g", {}); svg.append(gPills);
+  $("map").append(svg);
+}
+
+function cellSvg(g, b, lab, x, hatch, abs){
+  const fill = !b ? "#eeeeee" : b.r >= RAIN_MM ? "#4472C4" : "#FFC000";
+  const ink = !b ? "#666" : b.r >= RAIN_MM ? "#ffffff" : "#222222";
+  g.append(el("rect", { x, y:-6, width:52, height:28, fill }));
+  if(hatch && b) g.append(el("rect", { x, y:-6, width:52, height:28, fill:"url(#hatch)" }));
+  g.append(el("text", { x:x + 26, y:4, "text-anchor":"middle", "font-size":9.5, fill:ink }, lab));
+  g.append(el("text", { x:x + 26, y:18, "text-anchor":"middle", "font-size":13, "font-weight":600, fill:ink },
+    !b ? "…" : abs ? absN(b.t) : dFmt(b.t - b.ref)));
+}
+
+function tip(c, w, isSeoul){
+  const f = (b, lab) => lab + " " + absFmt(b.t) + (isSeoul ? "" : " (서울 대비 " + dFmt(b.t - (lab === "오전 6시" ? base.am.t : base.pm.t)) + ")")
+    + " · 강수량 " + b.r.toFixed(1) + " mm" + (b.r >= RAIN_MM ? " (비)" : " (없음)");
+  return c.name + " (" + c.region + ") — " + f(w.am, "오전 6시") + " / " + f(w.pm, "오후 8시");
+}
+
+function render(){
+  if(!gPills) return;
+  gPills.textContent = "";
+  [CITIES.map(c => c), [SEOUL]].forEach(list => list.forEach(c => {
+    const isSeoul = c.i === -1;
+    const w = isSeoul ? base : data[c.i];
+    if(!isSeoul && !base) return;
+    const abs = isSeoul || mode === "abs";
+    const am = w ? { t:w.am.t, r:w.am.r, ref:base ? base.am.t : 0 } : null;
+    const pm = w ? { t:w.pm.t, r:w.pm.r, ref:base ? base.pm.t : 0 } : null;
+    const [x, y] = px(c.lon, c.lat);
+    const g = el("g", { transform:"translate(" + x.toFixed(1) + " " + y.toFixed(1) + ")" });
+    g.style.cursor = "pointer";
+    g.append(el("line", { x1:0, y1:0, x2:c.dx, y2:c.dy, stroke:"#555", "stroke-width":1.2 }));
+    g.append(el("circle", { cx:0, cy:0, r:5, fill:"#333", stroke:"#fff", "stroke-width":2 }));
+    const p = el("g", { transform:"translate(" + c.dx + " " + c.dy + ")" });
+    p.append(el("rect", { x:-52, y:-22, width:104, height:44, rx:4, fill:"#fff", stroke:"#8a949c" }));
+    p.append(el("rect", { x:-52, y:-22, width:104, height:16, rx:4, fill:"#f2f4f6" }));
+    p.append(el("text", { x:0, y:-10, "text-anchor":"middle", "font-size":12.5, "font-weight":700, fill:"#222" }, isSeoul ? "서울 (기준)" : c.name));
+    cellSvg(p, am, "6시", -52, false, abs);
+    cellSvg(p, pm, "20시", 0, true, abs);
+    p.append(el("rect", { x:-52, y:-22, width:104, height:44, rx:4, fill:"none", stroke:"#8a949c" }));
+    g.append(p);
+    if(w){
+      const t = tip(c, w, isSeoul);
+      g.append(el("title", {}, t));
+      g.addEventListener("click", () => { $("info").textContent = t; });
+    }
+    gPills.append(g);
+  }));
+}
+
+$("mode").textContent = "표시: " + (mode === "diff" ? "서울 대비" : "실제 기온");
+$("unit").textContent = "°" + unit;
+$("mode").onclick = () => { mode = mode === "diff" ? "abs" : "diff"; save("mode", mode); $("mode").textContent = "표시: " + (mode === "diff" ? "서울 대비" : "실제 기온"); render(); };
+$("unit").onclick = () => { unit = unit === "C" ? "F" : "C"; save("unit", unit); $("unit").textContent = "°" + unit; render(); setStatus(); };
+$("refresh").onclick = refreshAll;
+
+initMap(); render(); refreshAll();
+setInterval(refreshAll, 10 * 60 * 1000);
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
+</script>
+</body>
+</html>

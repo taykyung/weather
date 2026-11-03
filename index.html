@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f5fa0">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="수도날씨">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<title>세계 수도 기온 지도</title>
+<style>
+:root{--bg:#fff;--ink:#1f2328;--muted:#5f6b76;--grid:#c9d0d6;--surface:#fff;--accent:#2f7fd8;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#14191e;--ink:#e7ecf0;--muted:#97a4af;--grid:#3a454f;--surface:#1b232a;--accent:#5aa9f0;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;padding:16px;line-height:1.4}
+main{max-width:1200px;margin:0 auto}
+h1{font-size:1.25rem;margin:0 0 4px}
+.status{font-size:.85rem;color:var(--muted);margin:0 0 12px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+select,button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--grid);border-radius:4px;padding:8px 12px;cursor:pointer}
+button:hover,select:hover{border-color:var(--accent)}
+select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.85rem;margin-bottom:8px;align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:16px;height:16px;border:1px solid rgba(0,0,0,.3);display:inline-block}
+.sw.dry{background:#FFC000}.sw.rain{background:#4472C4}.sw.gray{background:#7f7f7f}
+.sw.h{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.6) 0 3px,transparent 3px 6px)}
+#wrap{position:relative}
+#map{height:64vh;min-height:340px;border:1px solid var(--grid);border-radius:4px;background:#cfe3f0;overflow:hidden;touch-action:none;user-select:none}
+#map svg{display:block;width:100%;height:100%;cursor:grab}
+#map text{font-family:inherit}
+.zoom{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.zoom button{width:36px;height:36px;padding:0;font-size:1.2rem;line-height:1;background:#fff;color:#222}
+.info{min-height:1.4em;font-size:.88rem;margin-top:8px}
+.err{color:#b3261e;font-size:.85rem;margin-top:6px}
+.note{font-size:.78rem;color:var(--muted);margin-top:8px}
+body{padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(16px,env(safe-area-inset-bottom))}
+</style>
+</head>
+<body>
+<main>
+  <h1>세계 수도 기온 지도</h1>
+  <p class="status" id="status" aria-live="polite"></p>
+  <div class="tools">
+    <select id="focus" aria-label="보는 지역">
+      <option value="ALL">전 세계</option><option value="A">아시아</option><option value="E">유럽</option>
+      <option value="F">아프리카</option><option value="N">북·중미</option><option value="S">남미</option><option value="O">오세아니아</option>
+    </select>
+    <button id="show" type="button">시간: 오전+오후</button>
+    <button id="mode" type="button">표시: 서울 대비</button>
+    <button id="unit" type="button" aria-label="온도 단위 전환">°C</button>
+    <button id="refresh" type="button">새로고침</button>
+  </div>
+  <div class="legend" aria-label="범례">
+    <span><i class="sw dry"></i>비 안 옴</span>
+    <span><i class="sw rain"></i>비 옴</span>
+    <span><i class="sw gray"></i>왼쪽: 오전 6시</span>
+    <span><i class="sw gray h"></i>오른쪽(빗금): 오후 8시</span>
+  </div>
+  <div id="wrap">
+    <div id="map" role="application" aria-label="세계 지도"></div>
+    <div class="zoom">
+      <button id="zin" type="button" aria-label="확대">+</button>
+      <button id="zout" type="button" aria-label="축소">−</button>
+    </div>
+  </div>
+  <div class="info" id="info" aria-live="polite">수도 표시를 누르면 실제 기온과 강수량이 여기에 나와요. 마우스 휠이나 두 손가락으로 확대하고, 끌어서 움직일 수 있어요.</div>
+  <div class="err" id="err"></div>
+  <p class="note">표시된 숫자는 서울의 같은 시각(오전 6시, 오후 8시) 기온을 0으로 둔 차이예요. 시각은 각 수도의 현지 시각 기준이고, 그 시각에 강수량이 있으면 파란색, 없으면 노란색이에요. 서울은 기준이라 실제 기온을 보여줘요. 대상은 UN 회원국 수도(서울 제외)와 바티칸이고, 값은 1시간 단위 예보예요. 육지 윤곽은 인터넷에서 받아 그려요. 받지 못하면 격자만 보이고 수도 위치는 그대로 정확해요.</p>
+</main>
+
+<script>
+const SEOUL = { i:-1, name:"서울", country:"대한민국", cont:"A", lat:37.57, lon:126.98 };
+// 수도|나라|대륙(A아시아 E유럽 F아프리카 N북중미 S남미 O오세아니아)|위도|경도
+const RAW = `카불|아프가니스탄|A|34.53|69.17
+예레반|아르메니아|A|40.18|44.51
+바쿠|아제르바이잔|A|40.41|49.87
+마나마|바레인|A|26.23|50.59
+다카|방글라데시|A|23.81|90.41
+팀푸|부탄|A|27.47|89.64
+반다르스리브가완|브루나이|A|4.89|114.94
+프놈펜|캄보디아|A|11.56|104.92
+베이징|중국|A|39.90|116.41
+트빌리시|조지아|A|41.72|44.79
+뉴델리|인도|A|28.61|77.21
+자카르타|인도네시아|A|-6.21|106.85
+테헤란|이란|A|35.69|51.39
+바그다드|이라크|A|33.31|44.37
+예루살렘|이스라엘|A|31.77|35.21
+도쿄|일본|A|35.68|139.69
+암만|요르단|A|31.95|35.93
+아스타나|카자흐스탄|A|51.17|71.43
+쿠웨이트시티|쿠웨이트|A|29.38|47.99
+비슈케크|키르기스스탄|A|42.87|74.59
+비엔티안|라오스|A|17.97|102.63
+베이루트|레바논|A|33.89|35.50
+쿠알라룸푸르|말레이시아|A|3.14|101.69
+말레|몰디브|A|4.18|73.51
+울란바토르|몽골|A|47.89|106.91
+네피도|미얀마|A|19.76|96.08
+카트만두|네팔|A|27.72|85.32
+평양|북한|A|39.02|125.75
+무스카트|오만|A|23.59|58.41
+이슬라마바드|파키스탄|A|33.69|73.05
+마닐라|필리핀|A|14.60|120.98
+도하|카타르|A|25.29|51.53
+리야드|사우디아라비아|A|24.71|46.68
+싱가포르|싱가포르|A|1.35|103.82
+콜롬보|스리랑카|A|6.93|79.86
+다마스쿠스|시리아|A|33.51|36.29
+두샨베|타지키스탄|A|38.56|68.77
+방콕|태국|A|13.76|100.50
+딜리|동티모르|A|-8.56|125.57
+앙카라|튀르키예|A|39.93|32.86
+아슈하바트|투르크메니스탄|A|37.96|58.33
+아부다비|아랍에미리트|A|24.45|54.38
+타슈켄트|우즈베키스탄|A|41.30|69.24
+하노이|베트남|A|21.03|105.85
+사나|예멘|A|15.37|44.19
+티라나|알바니아|E|41.33|19.82
+안도라라베야|안도라|E|42.51|1.52
+빈|오스트리아|E|48.21|16.37
+민스크|벨라루스|E|53.90|27.57
+브뤼셀|벨기에|E|50.85|4.35
+사라예보|보스니아 헤르체고비나|E|43.86|18.41
+소피아|불가리아|E|42.70|23.32
+자그레브|크로아티아|E|45.81|15.98
+니코시아|키프로스|E|35.19|33.38
+프라하|체코|E|50.08|14.44
+코펜하겐|덴마크|E|55.68|12.57
+탈린|에스토니아|E|59.44|24.75
+헬싱키|핀란드|E|60.17|24.94
+파리|프랑스|E|48.86|2.35
+베를린|독일|E|52.52|13.40
+아테네|그리스|E|37.98|23.73
+부다페스트|헝가리|E|47.50|19.04
+레이캬비크|아이슬란드|E|64.15|-21.94
+더블린|아일랜드|E|53.35|-6.26
+로마|이탈리아|E|41.90|12.50
+리가|라트비아|E|56.95|24.11
+파두츠|리히텐슈타인|E|47.14|9.52
+빌뉴스|리투아니아|E|54.69|25.28
+룩셈부르크|룩셈부르크|E|49.61|6.13
+발레타|몰타|E|35.90|14.51
+키시너우|몰도바|E|47.01|28.86
+모나코|모나코|E|43.74|7.42
+포드고리차|몬테네그로|E|42.44|19.26
+암스테르담|네덜란드|E|52.37|4.90
+스코페|북마케도니아|E|42.00|21.43
+오슬로|노르웨이|E|59.91|10.75
+바르샤바|폴란드|E|52.23|21.01
+리스본|포르투갈|E|38.72|-9.14
+부쿠레슈티|루마니아|E|44.43|26.10
+모스크바|러시아|E|55.76|37.62
+산마리노|산마리노|E|43.94|12.45
+베오그라드|세르비아|E|44.79|20.45
+브라티슬라바|슬로바키아|E|48.15|17.11
+류블랴나|슬로베니아|E|46.06|14.51
+마드리드|스페인|E|40.42|-3.70
+스톡홀름|스웨덴|E|59.33|18.07
+베른|스위스|E|46.95|7.45
+키이우|우크라이나|E|50.45|30.52
+런던|영국|E|51.51|-0.13
+바티칸|바티칸|E|41.90|12.45
+알제|알제리|F|36.75|3.06
+루안다|앙골라|F|-8.84|13.23
+포르토노보|베냉|F|6.50|2.63
+가보로네|보츠와나|F|-24.65|25.91
+와가두구|부르키나파소|F|12.37|-1.52
+기테가|부룬디|F|-3.43|29.92
+프라이아|카보베르데|F|14.93|-23.51
+야운데|카메룬|F|3.87|11.52
+방기|중앙아프리카공화국|F|4.36|18.56
+은자메나|차드|F|12.13|15.05
+모로니|코모로|F|-11.70|43.26
+브라자빌|콩고공화국|F|-4.27|15.28
+킨샤사|콩고민주공화국|F|-4.44|15.27
+야무수크로|코트디부아르|F|6.83|-5.29
+지부티|지부티|F|11.59|43.15
+카이로|이집트|F|30.04|31.24
+말라보|적도기니|F|3.75|8.78
+아스마라|에리트레아|F|15.32|38.93
+음바바네|에스와티니|F|-26.31|31.14
+아디스아바바|에티오피아|F|9.03|38.74
+리브르빌|가봉|F|0.42|9.47
+반줄|감비아|F|13.45|-16.58
+아크라|가나|F|5.60|-0.19
+코나크리|기니|F|9.64|-13.58
+비사우|기니비사우|F|11.86|-15.60
+나이로비|케냐|F|-1.29|36.82
+마세루|레소토|F|-29.31|27.48
+몬로비아|라이베리아|F|6.30|-10.80
+트리폴리|리비아|F|32.89|13.19
+안타나나리보|마다가스카르|F|-18.88|47.51
+릴롱궤|말라위|F|-13.96|33.77
+바마코|말리|F|12.64|-8.00
+누악쇼트|모리타니|F|18.09|-15.98
+포트루이스|모리셔스|F|-20.16|57.50
+라바트|모로코|F|34.02|-6.83
+마푸투|모잠비크|F|-25.97|32.57
+빈트후크|나미비아|F|-22.56|17.08
+니아메|니제르|F|13.51|2.11
+아부자|나이지리아|F|9.08|7.40
+키갈리|르완다|F|-1.95|30.06
+상투메|상투메 프린시페|F|0.34|6.73
+다카르|세네갈|F|14.72|-17.47
+빅토리아|세이셸|F|-4.62|55.45
+프리타운|시에라리온|F|8.48|-13.23
+모가디슈|소말리아|F|2.05|45.32
+프리토리아|남아프리카공화국|F|-25.75|28.19
+주바|남수단|F|4.85|31.58
+하르툼|수단|F|15.50|32.56
+도도마|탄자니아|F|-6.16|35.75
+로메|토고|F|6.13|1.22
+튀니스|튀니지|F|36.81|10.18
+캄팔라|우간다|F|0.35|32.58
+루사카|잠비아|F|-15.39|28.32
+하라레|짐바브웨|F|-17.83|31.05
+세인트존스|앤티가 바부다|N|17.12|-61.85
+나소|바하마|N|25.05|-77.35
+브리지타운|바베이도스|N|13.10|-59.61
+벨모판|벨리즈|N|17.25|-88.77
+오타와|캐나다|N|45.42|-75.70
+산호세|코스타리카|N|9.93|-84.08
+아바나|쿠바|N|23.11|-82.37
+로조|도미니카|N|15.30|-61.39
+산토도밍고|도미니카공화국|N|18.49|-69.93
+산살바도르|엘살바도르|N|13.69|-89.19
+세인트조지스|그레나다|N|12.06|-61.75
+과테말라시티|과테말라|N|14.63|-90.51
+포르토프랭스|아이티|N|18.54|-72.34
+테구시갈파|온두라스|N|14.07|-87.19
+킹스턴|자메이카|N|17.97|-76.79
+멕시코시티|멕시코|N|19.43|-99.13
+마나과|니카라과|N|12.11|-86.24
+파나마시티|파나마|N|8.98|-79.52
+바스테르|세인트키츠 네비스|N|17.30|-62.72
+캐스트리스|세인트루시아|N|14.01|-60.99
+킹스타운|세인트빈센트 그레나딘|N|13.16|-61.22
+포트오브스페인|트리니다드 토바고|N|10.66|-61.51
+워싱턴 D.C.|미국|N|38.91|-77.04
+부에노스아이레스|아르헨티나|S|-34.60|-58.38
+라파스|볼리비아|S|-16.50|-68.15
+브라질리아|브라질|S|-15.79|-47.88
+산티아고|칠레|S|-33.45|-70.67
+보고타|콜롬비아|S|4.71|-74.07
+키토|에콰도르|S|-0.18|-78.47
+조지타운|가이아나|S|6.80|-58.16
+아순시온|파라과이|S|-25.26|-57.58
+리마|페루|S|-12.05|-77.04
+파라마리보|수리남|S|5.85|-55.20
+몬테비데오|우루과이|S|-34.90|-56.16
+카라카스|베네수엘라|S|10.48|-66.90
+캔버라|호주|O|-35.28|149.13
+수바|피지|O|-18.14|178.44
+타라와|키리바시|O|1.45|173.03
+마주로|마셜 제도|O|7.09|171.38
+팔리키르|미크로네시아|O|6.92|158.16
+야렌|나우루|O|-0.55|166.92
+웰링턴|뉴질랜드|O|-41.29|174.78
+응게룰무드|팔라우|O|7.50|134.62
+포트모르즈비|파푸아뉴기니|O|-9.44|147.18
+아피아|사모아|O|-13.83|-171.76
+호니아라|솔로몬 제도|O|-9.43|159.95
+누쿠알로파|통가|O|-21.14|-175.20
+푸나푸티|투발루|O|-8.52|179.19
+포트빌라|바누아투|O|-17.73|168.32`;
+const CAPS = RAW.split("\n").map((l, i) => { const p = l.split("|"); return { i, name:p[0], country:p[1], cont:p[2], lat:+p[3], lon:+p[4] }; });
+
+const $ = id => document.getElementById(id);
+function load(k, f){ try{ const v = localStorage.getItem("wmap:"+k); return v ? JSON.parse(v) : f; }catch(e){ return f; } }
+function save(k, v){ try{ localStorage.setItem("wmap:"+k, JSON.stringify(v)); }catch(e){} }
+
+let unit = load("unit", "C"), mode = load("mode", "diff"), show = load("show", "both");
+const AM_H = 6, PM_H = 20, RAIN_MM = 0.1;
+let base = null, updated = "";
+const data = {};
+const RAIN = "#4472C4", DRY = "#FFC000";
+const conv = d => unit === "C" ? d : d*9/5;
+const absN = c => Math.round(unit === "C" ? c : c*9/5+32) + "°";
+const absFmt = c => absN(c) + unit;
+const dFmt = d => { const v = Math.round(conv(d)); return (v > 0 ? "+" : "") + (v === 0 ? 0 : v) + "°"; };
+
+async function fetchChunk(list){
+  const url = "https://api.open-meteo.com/v1/forecast?latitude=" + list.map(c => c.lat).join(",")
+    + "&longitude=" + list.map(c => c.lon).join(",") + "&hourly=temperature_2m,precipitation&forecast_days=1&timezone=auto";
+  const res = await fetch(url);
+  if(!res.ok) throw new Error("HTTP " + res.status);
+  const j = await res.json();
+  return (Array.isArray(j) ? j : [j]).map(d => ({
+    am:{ t:d.hourly.temperature_2m[AM_H], r:d.hourly.precipitation[AM_H] },
+    pm:{ t:d.hourly.temperature_2m[PM_H], r:d.hourly.precipitation[PM_H] }
+  }));
+}
+async function refreshAll(){
+  $("status").textContent = "전 세계 수도 날씨를 불러오는 중…";
+  const all = [SEOUL, ...CAPS], chunks = [];
+  for(let i = 0; i < all.length; i += 50) chunks.push(all.slice(i, i + 50));
+  let failed = 0;
+  await Promise.all(chunks.map(async (ch, ci) => {
+    try{
+      (await fetchChunk(ch)).forEach((o, k) => { const idx = ci*50 + k - 1; if(idx < 0) base = o; else data[idx] = o; });
+    }catch(e){ failed += ch.length; }
+  }));
+  $("err").textContent = failed ? "일부 수도는 불러오지 못했어요. 새로고침을 눌러 보세요." : "";
+  if(!failed || base) updated = new Date().toLocaleTimeString("ko-KR", { hour:"2-digit", minute:"2-digit" });
+  renderMarkers(); setStatus();
+}
+function setStatus(){
+  $("status").textContent = base && updated
+    ? "기준: 서울 오전 6시 " + absFmt(base.am.t) + " = 0, 오후 8시 " + absFmt(base.pm.t) + " = 0 · 마지막 갱신 " + updated
+    : "서울 기준 기온을 불러오지 못했어요. 새로고침을 눌러 주세요.";
+}
+
+/* ---------- 지도 ---------- */
+const NS = "http://www.w3.org/2000/svg";
+function el(name, attrs, text){
+  const e = document.createElementNS(NS, name);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(text !== undefined) e.textContent = text;
+  return e;
+}
+const K = 2.8, WW = 360*K, WH = 140*K;                 // 위도 84 ~ -56 범위, 경도 -180 ~ 180
+const proj = (lon, lat) => [(lon + 180) * K, (84 - lat) * K];
+let vb = { x:0, y:0, w:WW, h:WH };
+let svg, defs, gMarks, landPath;
+const cw = () => $("map").clientWidth || 800, ch = () => $("map").clientHeight || 400;
+const U = () => vb.w / cw();                           // 화면 1px = 지도 U 단위
+
+function clampView(){
+  vb.x = Math.min(Math.max(vb.x, -vb.w*0.4), WW - vb.w*0.6);
+  vb.y = Math.min(Math.max(vb.y, -vb.h*0.4), WH - vb.h*0.6);
+}
+function applyView(rerender){
+  svg.setAttribute("viewBox", vb.x.toFixed(2) + " " + vb.y.toFixed(2) + " " + vb.w.toFixed(2) + " " + vb.h.toFixed(2));
+  if(rerender) renderMarkers();
+}
+function fitBox(lo0, lo1, la0, la1){
+  const [x0, y0] = proj(lo0, la1), bw = (lo1 - lo0) * K, bh = (la1 - la0) * K, asp = cw() / ch();
+  vb.w = Math.max(bw, bh * asp); vb.h = vb.w / asp;
+  vb.x = x0 + bw/2 - vb.w/2; vb.y = y0 + bh/2 - vb.h/2;
+  clampView(); applyView(true);
+}
+const BOX = { ALL:[-180,180,-56,84], A:[25,148,-12,58], E:[-25,50,34,72], F:[-20,52,-36,38], N:[-125,-58,4,52], S:[-84,-34,-56,14], O:[110,180,-48,12] };
+function zoomAt(f, cx, cy){
+  const r = $("map").getBoundingClientRect(), u = U();
+  const px = vb.x + (cx - r.left) * u, py = vb.y + (cy - r.top) * u;
+  const nw = Math.min(Math.max(vb.w / f, 36), WW * 1.2), nu = nw / cw();
+  vb.w = nw; vb.h = nu * ch();
+  vb.x = px - (cx - r.left) * nu; vb.y = py - (cy - r.top) * nu;
+  clampView(); applyView(true);
+}
+
+function initMap(){
+  svg = el("svg", { preserveAspectRatio:"xMidYMid slice", role:"img", "aria-label":"세계 수도 기온 지도" });
+  defs = el("defs", {}); svg.append(defs);
+  for(let lo = -180; lo <= 180; lo += 30){ const [x] = proj(lo, 0); svg.append(el("line", { x1:x, x2:x, y1:0, y2:WH, stroke:"#fff", "stroke-opacity":".5", "vector-effect":"non-scaling-stroke" })); }
+  for(let la = -30; la <= 60; la += 30){ const [, y] = proj(0, la); svg.append(el("line", { x1:0, x2:WW, y1:y, y2:y, stroke:"#fff", "stroke-opacity":".5", "vector-effect":"non-scaling-stroke" })); }
+  landPath = el("path", { fill:"#f4f1e8", stroke:"#8d99a3", "stroke-width":1, "fill-rule":"evenodd", "stroke-linejoin":"round", "vector-effect":"non-scaling-stroke" });
+  svg.append(landPath);
+  gMarks = el("g", {}); svg.append(gMarks);
+  $("map").append(svg);
+  fitBox(...BOX.ALL);
+  loadLand();
+}
+
+async function loadLand(){
+  try{
+    const r = await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json");
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    const t = await r.json();
+    const [sx, sy] = t.transform.scale, [tx, ty] = t.transform.translate;
+    const arcs = t.arcs.map(a => { let x = 0, y = 0; return a.map(([dx, dy]) => { x += dx; y += dy; return [x*sx + tx, y*sy + ty]; }); });
+    const ring = idxs => { const out = []; idxs.forEach(i => { const a = i < 0 ? arcs[~i].slice().reverse() : arcs[i]; out.push(...(out.length ? a.slice(1) : a)); }); return out; };
+    const rings = [];
+    const walk = g => {
+      if(g.type === "GeometryCollection") g.geometries.forEach(walk);
+      else if(g.type === "MultiPolygon") g.arcs.forEach(p => p.forEach(rg => rings.push(ring(rg))));
+      else if(g.type === "Polygon") g.arcs.forEach(rg => rings.push(ring(rg)));
+    };
+    Object.values(t.objects).forEach(walk);
+    landPath.setAttribute("d", rings.map(rg => "M" + rg.map(p => proj(p[0], p[1]).map(v => v.toFixed(1)).join(",")).join("L") + "Z").join(""));
+  }catch(e){
+    $("err").textContent = ($("err").textContent ? $("err").textContent + " " : "") + "육지 윤곽을 불러오지 못해 격자만 표시해요. 수도 위치는 정확해요.";
+  }
+}
+
+function renderMarkers(){
+  if(!gMarks) return;
+  gMarks.textContent = "";
+  const u = U();
+  defs.textContent = "";
+  const pat = el("pattern", { id:"hatch", width:5*u, height:5*u, patternUnits:"userSpaceOnUse", patternTransform:"rotate(45)" });
+  pat.append(el("line", { x1:0, y1:0, x2:0, y2:5*u, stroke:"#fff", "stroke-opacity":".65", "stroke-width":2.4*u }));
+  defs.append(pat);
+  const pad = 40 * u, showName = u < 0.45;
+  const draw = (c, w, isSeoul) => {
+    const [x, y] = proj(c.lon, c.lat);
+    if(x < vb.x - pad || x > vb.x + vb.w + pad || y < vb.y - pad || y > vb.y + vb.h + pad) return;
+    const abs = isSeoul || mode === "abs";
+    const am = w ? { t:w.am.t, r:w.am.r, ref:base ? base.am.t : 0 } : null;
+    const pm = w ? { t:w.pm.t, r:w.pm.r, ref:base ? base.pm.t : 0 } : null;
+    const parts = show === "am" ? [[am, false]] : show === "pm" ? [[pm, true]] : [[am, false], [pm, true]];
+    const bw = 22 * u, bh = 15 * u, total = bw * parts.length;
+    const g = el("g", { transform:"translate(" + x.toFixed(2) + " " + y.toFixed(2) + ")" });
+    g.style.cursor = "pointer";
+    parts.forEach(([b, hatch], k) => {
+      const bx = -total/2 + k*bw;
+      const fill = !b ? "#e5e5e5" : b.r >= RAIN_MM ? RAIN : DRY, ink = !b ? "#666" : b.r >= RAIN_MM ? "#fff" : "#222";
+      g.append(el("rect", { x:bx, y:-bh/2, width:bw, height:bh, fill }));
+      if(hatch && b) g.append(el("rect", { x:bx, y:-bh/2, width:bw, height:bh, fill:"url(#hatch)" }));
+      g.append(el("text", { x:bx + bw/2, y:bh*0.22, "text-anchor":"middle", "font-size":10.5*u, "font-weight":600, fill:ink }, !b ? "…" : abs ? absN(b.t) : dFmt(b.t - b.ref)));
+    });
+    g.append(el("rect", { x:-total/2, y:-bh/2, width:total, height:bh, fill:"none", stroke:isSeoul ? "#000" : "#444", "stroke-width":(isSeoul ? 2 : 0.8) * u }));
+    if(isSeoul || showName){
+      const t = el("text", { x:0, y:-bh/2 - 3*u, "text-anchor":"middle", "font-size":10*u, "font-weight":isSeoul ? 700 : 400, fill:"#111",
+        stroke:"#fff", "stroke-width":2.5*u, "paint-order":"stroke" }, isSeoul ? "서울 (기준)" : c.name);
+      g.append(t);
+    }
+    if(w){
+      const f = (b, lab, ref) => lab + " " + absFmt(b.t) + (isSeoul ? "" : " (서울 대비 " + dFmt(b.t - ref) + ")") + " · 강수량 " + b.r.toFixed(1) + " mm" + (b.r >= RAIN_MM ? " (비)" : " (없음)");
+      const text = c.name + " (" + c.country + ") — " + f(w.am, "오전 6시", base ? base.am.t : 0) + " / " + f(w.pm, "오후 8시", base ? base.pm.t : 0);
+      g.append(el("title", {}, text));
+      g.addEventListener("click", () => { if(dragD < 6) $("info").textContent = text; });
+    }
+    gMarks.append(g);
+  };
+  CAPS.forEach(c => { const w = data[c.i]; if(base && w) draw(c, w, false); });
+  draw(SEOUL, base, true);
+}
+
+/* 끌어서 이동 / 휠·두 손가락 확대 */
+const pts = new Map(); let dragD = 0;
+$("map").addEventListener("pointerdown", e => { pts.set(e.pointerId, { x:e.clientX, y:e.clientY }); if(pts.size === 1) dragD = 0; });
+window.addEventListener("pointermove", e => {
+  const p = pts.get(e.pointerId); if(!p) return;
+  if(pts.size === 1){
+    const dx = e.clientX - p.x, dy = e.clientY - p.y, u = U();
+    dragD += Math.abs(dx) + Math.abs(dy);
+    vb.x -= dx * u; vb.y -= dy * u; clampView(); applyView(true);
+  } else if(pts.size === 2){
+    const o = [...pts.entries()].find(([id]) => id !== e.pointerId)[1];
+    const d0 = Math.hypot(p.x - o.x, p.y - o.y), d1 = Math.hypot(e.clientX - o.x, e.clientY - o.y);
+    dragD += 10;
+    if(d0 > 0) zoomAt(d1 / d0, (e.clientX + o.x)/2, (e.clientY + o.y)/2);
+  }
+  pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
+});
+["pointerup", "pointercancel"].forEach(ev => window.addEventListener(ev, e => pts.delete(e.pointerId)));
+$("map").addEventListener("wheel", e => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX, e.clientY); }, { passive:false });
+$("zin").onclick = () => { const r = $("map").getBoundingClientRect(); zoomAt(1.5, r.left + r.width/2, r.top + r.height/2); };
+$("zout").onclick = () => { const r = $("map").getBoundingClientRect(); zoomAt(1/1.5, r.left + r.width/2, r.top + r.height/2); };
+$("focus").onchange = e => fitBox(...BOX[e.target.value]);
+
+const SHOW_LABEL = { both:"오전+오후", am:"오전만", pm:"오후만" };
+$("show").textContent = "시간: " + SHOW_LABEL[show];
+$("mode").textContent = "표시: " + (mode === "diff" ? "서울 대비" : "실제 기온");
+$("unit").textContent = "°" + unit;
+$("show").onclick = () => { show = show === "both" ? "am" : show === "am" ? "pm" : "both"; save("show", show); $("show").textContent = "시간: " + SHOW_LABEL[show]; renderMarkers(); };
+$("mode").onclick = () => { mode = mode === "diff" ? "abs" : "diff"; save("mode", mode); $("mode").textContent = "표시: " + (mode === "diff" ? "서울 대비" : "실제 기온"); renderMarkers(); };
+$("unit").onclick = () => { unit = unit === "C" ? "F" : "C"; save("unit", unit); $("unit").textContent = "°" + unit; renderMarkers(); if(updated) setStatus(); };
+$("refresh").onclick = refreshAll;
+let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { vb.h = vb.w * ch() / cw(); clampView(); applyView(true); }, 150); });
+
+initMap(); renderMarkers(); refreshAll();
+setInterval(refreshAll, 60 * 60 * 1000);
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
+</script>
+</body>
+</html>
