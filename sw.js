@@ -1,5 +1,5 @@
 // 앱을 고쳐서 다시 올릴 때는 VERSION 숫자를 올려 주세요. 그래야 폰이 새 파일을 받아요.
-const VERSION = "v5";
+const VERSION = "v7";
 const CACHE = "weather-map-" + VERSION;
 const SHELL = ["./", "index.html", "manifest.json",
   "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png"];
